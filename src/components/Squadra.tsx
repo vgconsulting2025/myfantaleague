@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import type { LeagueTeam } from "@/lib/league/types";
 import { ROLE_LABELS, ROLE_ORDER } from "./theme";
 import { RoleBadge, SectionTitle } from "./ui";
+import Figurina from "./figurine/Figurina";
+import PlayerAvatar from "./figurine/PlayerAvatar";
 
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
@@ -13,7 +19,32 @@ function StatCard({ value, label }: { value: string; label: string }) {
   );
 }
 
+function ViewToggle({
+  view,
+  setView,
+}: {
+  view: "grid" | "list";
+  setView: (v: "grid" | "list") => void;
+}) {
+  return (
+    <div className="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white text-sm font-semibold">
+      {(["grid", "list"] as const).map((v) => (
+        <button
+          key={v}
+          onClick={() => setView(v)}
+          className={`px-3 py-2 transition ${
+            view === v ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {v === "grid" ? "Figurine" : "Elenco"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
+  const [view, setView] = useState<"grid" | "list">("grid");
   const players = userTeam.players;
   const totalQuota = players.reduce((s, p) => s + p.quota, 0);
   const avgFm = players.length
@@ -31,7 +62,11 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
 
   return (
     <div>
-      <SectionTitle overline={`Gestione squadra · ${userTeam.president}`} title={userTeam.name} />
+      <SectionTitle
+        overline={`Gestione squadra · ${userTeam.president}`}
+        title={userTeam.name}
+        action={<ViewToggle view={view} setView={setView} />}
+      />
 
       {/* Statistiche di sintesi */}
       <div className="mb-5 flex flex-wrap gap-4">
@@ -68,43 +103,54 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
         </div>
       )}
 
-      {/* Rosa raggruppata per ruolo */}
-      <div className="grid gap-5 md:grid-cols-2">
-        {reparti.map((r) => (
-          <div
-            key={r.role}
-            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3">
-              <div className="flex items-center gap-2">
-                <RoleBadge role={r.role} />
-                <span className="font-display text-lg font-semibold uppercase tracking-wide text-slate-800">
-                  {ROLE_LABELS[r.role]}
-                </span>
-              </div>
-              <span className="text-xs font-medium text-slate-400">{r.count} giocatori</span>
-            </div>
-            <ul className="divide-y divide-slate-100">
-              {r.players.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 px-5 py-2.5">
-                  <span className="flex-1 text-sm">
-                    <span className="font-semibold text-slate-900">{p.name}</span>
-                    <span className="text-slate-400"> · {p.club}</span>
-                  </span>
-                  <span className="text-xs text-slate-500">quota {p.quota}</span>
-                  <span
-                    className={`w-14 text-right text-sm font-bold tabular-nums ${
-                      p.fm >= 6.8 ? "text-emerald-600" : "text-slate-700"
-                    }`}
-                  >
-                    FM {p.fm.toFixed(1)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+      {/* Rosa per ruolo */}
+      {reparti.map((r) => (
+        <div key={r.role} className="mb-8">
+          <div className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-1">
+            <RoleBadge role={r.role} />
+            <span className="font-display text-lg font-semibold uppercase tracking-wide text-slate-800">
+              {ROLE_LABELS[r.role]}
+            </span>
+            <span className="text-xs font-medium text-slate-400">· {r.count} giocatori</span>
           </div>
-        ))}
-      </div>
+
+          {view === "grid" ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {r.players.map((p) => (
+                <Figurina key={p.id} player={p} size="md" href={`/figurina/${p.id}`} />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <ul className="divide-y divide-slate-100">
+                {r.players.map((p) => (
+                  <li key={p.id} className="flex items-center gap-3 px-4 py-2">
+                    <Link
+                      href={`/figurina/${p.id}`}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200 transition hover:ring-emerald-400"
+                      title={`Figurina di ${p.name}`}
+                    >
+                      <PlayerAvatar name={p.name} club={p.club} className="h-full w-full" />
+                    </Link>
+                    <span className="flex-1 text-sm">
+                      <span className="font-semibold text-slate-900">{p.name}</span>
+                      <span className="text-slate-400"> · {p.club}</span>
+                    </span>
+                    <span className="text-xs text-slate-500">quota {p.quota}</span>
+                    <span
+                      className={`w-14 text-right text-sm font-bold tabular-nums ${
+                        p.fm >= 6.8 ? "text-emerald-600" : "text-slate-700"
+                      }`}
+                    >
+                      FM {p.fm.toFixed(1)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

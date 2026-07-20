@@ -13,6 +13,7 @@ import type {
   Giornata,
   LeagueTeam,
   MatchResult,
+  PlayerWithTeam,
   Role,
   TradeRecord,
   TradeStatus,
@@ -45,6 +46,7 @@ export interface LeagueRepository {
   getLatestEdition(): Promise<Edition | null>;
   getTrades(): Promise<TradeRecord[]>;
   getFlashNews(limit?: number): Promise<FlashItem[]>;
+  getPlayerById(id: string): Promise<PlayerWithTeam | null>;
 
   // Scrittura
   saveEdition(articles: ArticleInput[], giornata: number | null): Promise<Edition>;

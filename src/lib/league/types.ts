@@ -23,6 +23,13 @@ export interface LeagueTeam {
   players: LeaguePlayer[];
 }
 
+export interface PlayerWithTeam {
+  player: LeaguePlayer;
+  teamName: string;
+  teamSlug: string;
+  isUser: boolean;
+}
+
 export interface MatchResult {
   home: string;
   away: string;

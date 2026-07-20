@@ -162,6 +162,17 @@ export class PrismaLeagueRepository implements LeagueRepository {
     }));
   }
 
+  async getPlayerById(id: string) {
+    const p = await prisma.player.findUnique({ where: { id }, include: { team: true } });
+    if (!p) return null;
+    return {
+      player: mapPlayer(p),
+      teamName: p.team.name,
+      teamSlug: p.team.slug,
+      isUser: p.team.isUser,
+    };
+  }
+
   async getFlashNews(limit = 8): Promise<FlashItem[]> {
     const items = await prisma.flashNews.findMany({
       orderBy: { createdAt: "desc" },

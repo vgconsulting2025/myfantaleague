@@ -144,6 +144,19 @@ La **lega dimostrativa** del seed resta sempre disponibile: il pulsante **"Ripri
 
 ---
 
+## Figurine dei giocatori
+
+Ogni giocatore ha una **figurina** in stile album, disegnata come componente **SVG/CSS originale** (nessuna foto, nessuna caricatura di persone reali):
+
+- cornice verticale stondata con effetto lucido; **variante "rara" dorata** per fantamedia ≥ 7;
+- fascia superiore coi **colori del club** (`lib/league/clubColors.ts`);
+- **avatar caricaturale**: un volto composto da set di tratti SVG (forma viso, capelli, barba/baffi, carnagione, espressione, accessorio come fascetta/colletto) scelti in modo **deterministico dal nome** — stesso nome → stesso personaggio, ma di fantasia (oltre 1 milione di combinazioni);
+- nome, badge ruolo (P/D/C/A), quotazione e fantamedia.
+
+Le figurine compaiono in **La Mia Squadra** (griglia per reparto con toggle Figurine/Elenco), nelle proposte del **Mercato** (affiancate con freccia di scambio) e in miniatura nelle liste. Un clic apre la pagina della **figurina ingrandita** (`/figurina/[id]`). La logica (colori club, selezione tratti) è nel layer `lib/` ed è testata.
+
+---
+
 ## Architettura
 
 ```
@@ -162,7 +175,9 @@ src/
       import/preview       POST  Analizza file/testo → anteprima strutturata
       import/commit        POST  Scrive la lega importata (replace/merge)
       import/reset         POST  Ripristina la lega demo
-  components/               UI (client): AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Configura
+  components/               UI: AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Configura
+    figurine/              PlayerAvatar (SVG) + Figurina (card sticker)
+  app/figurina/[id]/       Pagina della figurina ingrandita
   lib/
     db.ts                  Singleton PrismaClient
     anthropic.ts           Client Anthropic + askClaude() + parseAiJson() (parsing robusto)
@@ -174,8 +189,10 @@ src/
       import/parse.ts      Parsing tollerante CSV/TSV/incollato               ← testata
       import/xlsx.ts       Lettura XLSX via exceljs (server)
       *.test.ts            Test Vitest (trades + demo-content + import/parse)
+      clubColors.ts        Mappa club Serie A → colori (per le figurine)      ← testata
       repository.ts        Interfaccia astratta LeagueRepository + factory
       prisma-repository.ts Implementazione su Prisma/SQLite
+    figurine/traits.ts     Selezione deterministica dei tratti avatar         ← testata
 ```
 
 **Punti chiave**
