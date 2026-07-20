@@ -1,0 +1,95 @@
+// MyFantaLeague — schema dati (SQLite via Prisma).
+// La lega demo viene creata dallo script prisma/seed.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  president String
+  points    Int      @default(0)
+  isUser    Boolean  @default(false)
+  players   Player[]
+  createdAt DateTime @default(now())
+}
+
+model Player {
+  id     String @id @default(cuid())
+  name   String
+  role   String // P | D | C | A
+  club   String
+  quota  Int
+  fm     Float
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  @@index([teamId])
+}
+
+model Giornata {
+  id       String   @id @default(cuid())
+  number   Int      @unique
+  playedAt DateTime @default(now())
+  results  Result[]
+}
+
+model Result {
+  id         String   @id @default(cuid())
+  giornata   Giornata @relation(fields: [giornataId], references: [id], onDelete: Cascade)
+  giornataId String
+  homeName   String
+  awayName   String
+  homeScore  Float
+  awayScore  Float
+  note       String
+
+  @@index([giornataId])
+}
+
+model Edition {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  giornata  Int?
+  articles  Article[]
+}
+
+model Article {
+  id        String  @id @default(cuid())
+  edition   Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  editionId String
+  kicker    String
+  title     String
+  body      String
+  category  String
+  isLead    Boolean @default(false)
+  order     Int     @default(0)
+
+  @@index([editionId])
+}
+
+model Trade {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  status       String // accepted | rejected
+  fromTeam     String
+  toTeam       String
+  giveName     String
+  receiveName  String
+  rationale    String
+  agentComment String
+}
+
+model FlashNews {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  text      String
+  kind      String   @default("mercato") // mercato | generic
+}

@@ -1,0 +1,144 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import type {
+  Edition,
+  EnrichedProposal,
+  FlashItem,
+  Giornata,
+  LeagueTeam,
+  TradeRecord,
+} from "@/lib/league/types";
+import Gazzetta from "./Gazzetta";
+import Mercato from "./Mercato";
+import Squadra from "./Squadra";
+import Classifica from "./Classifica";
+
+type TabId = "gazzetta" | "mercato" | "squadra" | "classifica";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "gazzetta", label: "La Gazzetta" },
+  { id: "mercato", label: "Mercato" },
+  { id: "squadra", label: "La Mia Squadra" },
+  { id: "classifica", label: "Classifica" },
+];
+
+interface AppShellProps {
+  userTeam: LeagueTeam;
+  standings: LeagueTeam[];
+  editions: Edition[];
+  trades: TradeRecord[];
+  flash: FlashItem[];
+  latestGiornata: Giornata | null;
+}
+
+export default function AppShell({
+  userTeam,
+  standings,
+  editions,
+  trades,
+  flash,
+  latestGiornata,
+}: AppShellProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [tab, setTab] = useState<TabId>("gazzetta");
+  const [proposals, setProposals] = useState<EnrichedProposal[]>([]);
+  const [simulating, setSimulating] = useState(false);
+
+  const pendingCount = proposals.filter((p) => p.status === "pending").length;
+
+  async function simula() {
+    setSimulating(true);
+    try {
+      const res = await fetch("/api/simulate", { method: "POST" });
+      if (res.ok) startTransition(() => router.refresh());
+    } finally {
+      setSimulating(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Header scuro fisso */}
+      <header className="fixed inset-x-0 top-0 z-50 bg-[#0B1220] text-white shadow-lg">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+          <button
+            onClick={() => setTab("gazzetta")}
+            className="flex shrink-0 items-center gap-1.5 font-display text-lg font-bold tracking-tight"
+          >
+            <span className="text-xl">⚽</span>
+            <span>
+              MyFanta<span className="text-emerald-400">League</span>
+            </span>
+          </button>
+
+          <nav className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto">
+            {TABS.map((t) => {
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`relative whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide transition ${
+                    active
+                      ? "bg-emerald-600 text-white"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {t.label}
+                  {t.id === "mercato" && pendingCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-[#0B1220]">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <button
+            onClick={simula}
+            disabled={simulating}
+            title="Simula una giornata di campionato"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+          >
+            <span className={simulating ? "inline-block animate-spin" : "inline-block"}>⟳</span>
+            <span className="hidden sm:inline">
+              {simulating ? "Simulo..." : "Simula giornata"}
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <main className="pt-16">
+        {/* Sotto-header con info lega */}
+        <div className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+                Lega Bar Centrale · Stagione 2025/26
+              </div>
+              <div className="text-sm text-slate-500">
+                {latestGiornata
+                  ? `Giornata ${latestGiornata.number} · ${latestGiornata.results.length} partite`
+                  : "Nessuna giornata giocata"}
+              </div>
+            </div>
+            <div className="text-sm italic text-slate-400">La tua lega, viva tutti i giorni.</div>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {tab === "gazzetta" && <Gazzetta editions={editions} flash={flash} />}
+          {tab === "mercato" && (
+            <Mercato trades={trades} proposals={proposals} setProposals={setProposals} />
+          )}
+          {tab === "squadra" && <Squadra userTeam={userTeam} />}
+          {tab === "classifica" && <Classifica standings={standings} />}
+        </div>
+      </main>
+    </>
+  );
+}

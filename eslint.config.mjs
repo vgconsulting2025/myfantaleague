@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototipo di riferimento (non fa parte dell'app).
+    "MyFantaLeague.jsx",
   ]),
 ]);
 
