@@ -13,9 +13,11 @@ import type {
   Giornata,
   LeagueTeam,
   MatchResult,
+  Role,
   TradeRecord,
   TradeStatus,
 } from "./types";
+import type { ImportResultRow } from "./import/types";
 
 export interface NewTrade {
   status: TradeStatus;
@@ -25,6 +27,12 @@ export interface NewTrade {
   receiveName: string;
   rationale: string;
   agentComment: string;
+}
+
+// Squadra importata (rosa) usata da replaceLeague / mergeRoster.
+export interface ImportTeamData {
+  name: string;
+  players: { name: string; role: Role; club: string; quota: number; fm: number }[];
 }
 
 export interface LeagueRepository {
@@ -52,6 +60,12 @@ export interface LeagueRepository {
     results: MatchResult[],
     pointsByTeamName: Record<string, number>,
   ): Promise<Giornata>;
+
+  // Import lega
+  replaceLeague(teams: ImportTeamData[], myTeamName: string | null): Promise<void>;
+  mergeRoster(teams: ImportTeamData[], myTeamName: string | null): Promise<void>;
+  importResults(results: ImportResultRow[]): Promise<void>;
+  resetToDemo(): Promise<void>;
 }
 
 import { PrismaLeagueRepository } from "./prisma-repository";

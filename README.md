@@ -14,6 +14,7 @@ Interfaccia in italiano, stile **portale di notizie**: header scuro fisso con me
 
 - **Next.js 16** (App Router) + **TypeScript** + **Tailwind CSS v4**
 - **Prisma** + **SQLite** per la persistenza (squadre, rose, giornate, risultati, scambi, edizioni, articoli, ultim'ora)
+- **exceljs** per leggere i file XLSX lato server nell'import lega
 - **SDK ufficiale Anthropic** (`@anthropic-ai/sdk`) usato **solo lato server** (API route), modello `claude-sonnet-4-6`
 - **Vitest** per i test della logica scambi
 
@@ -97,6 +98,52 @@ La logica è pura e testabile: vedi `src/lib/league/demo-content.ts` (`generateD
 
 ---
 
+## Importa la tua lega (da Leghe Fantacalcio)
+
+Le piattaforme come **Leghe Fantacalcio** non hanno API pubbliche, ma permettono di **esportare** rose e calendario in Excel/CSV. Dalla scheda **"Configura"** dell'app puoi caricarli (o incollarli) e sostituire/aggiornare la lega nel database.
+
+### Come esportare da Leghe Fantacalcio
+
+> I nomi esatti delle voci di menu cambiano di stagione in stagione; l'idea resta la stessa.
+
+- **Rose**: nell'area di gestione della lega cerca la voce di *Esporta* / *Download* delle **rose** (di solito un file Excel `.xlsx`). In alternativa apri la pagina delle rose e **copia** la tabella.
+- **Calendario / Risultati**: esporta (o copia) il **calendario** o i **risultati** delle giornate.
+
+Se l'export non è già "piatto", aprilo con Excel/Google Sheets e disponi i dati in colonne (una riga per giocatore / per partita), poi salva come CSV o copia le celle.
+
+### Colonne attese (i nomi simili sono riconosciuti automaticamente)
+
+**Rose** — una riga per giocatore:
+
+| squadra | giocatore | ruolo | club | quotazione |
+|---|---|---|---|---|
+| Real Divano | Sommer | P | Inter | 16 |
+
+- `squadra` = la **fanta-squadra** proprietaria; `club` = la squadra di **Serie A**.
+- `ruolo` accetta `P/D/C/A`, forme estese (`Por/Dif/Cen/Att`, `Portiere`…) e le abbreviazioni Mantra più comuni.
+- Altri sinonimi: `fantasquadra`/`proprietario` (squadra), `nome`/`calciatore` (giocatore), `quota`/`costo`/`crediti` (quotazione), `fantamedia`/`fm` (facoltativa).
+
+**Calendario / Risultati** — una riga per partita:
+
+| giornata | casa | ospite | punti casa | punti ospite |
+|---|---|---|---|---|
+| 6 | Real Divano | AC Sciacallo | 68.5 | 74 |
+
+- In alternativa alle due colonne punti è accettata un'unica colonna `risultato` tipo `68.5 - 74`.
+- I **punti in classifica vengono ricalcolati** dai risultati (3 vittoria / 1 pareggio).
+
+### Flusso di import
+
+1. Apri la scheda **Configura**.
+2. In **Rose** (o **Calendario**) **carica** un file `.csv`/`.xlsx` **oppure incolla** i dati e premi **Analizza**.
+3. Controlla l'**anteprima**: puoi correggere ogni cella; le righe con ruolo non riconosciuto sono evidenziate.
+4. Per le rose scegli **La mia squadra** e la modalità **Sostituisci lega** (riparte da zero) o **Aggiorna** (upsert per nome squadra).
+5. Premi **Conferma import**. In caso di formato non riconosciuto compaiono messaggi d'errore chiari su cosa correggere.
+
+La **lega dimostrativa** del seed resta sempre disponibile: il pulsante **"Ripristina lega demo"** la ripristina in qualsiasi momento.
+
+---
+
 ## Architettura
 
 ```
@@ -112,7 +159,10 @@ src/
       trades/route.ts      POST  "Chiama l'Agente" → 3 proposte validate (AI)
       trades/decide/route.ts POST Accetta/Rifiuta → esegue lo scambio + flash news
       simulate/route.ts    POST  Simula giornata (locale)
-  components/               UI (client): AppShell + tab Gazzetta/Mercato/Squadra/Classifica
+      import/preview       POST  Analizza file/testo → anteprima strutturata
+      import/commit        POST  Scrive la lega importata (replace/merge)
+      import/reset         POST  Ripristina la lega demo
+  components/               UI (client): AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Configura
   lib/
     db.ts                  Singleton PrismaClient
     anthropic.ts           Client Anthropic + askClaude() + parseAiJson() (parsing robusto)
@@ -120,7 +170,10 @@ src/
       types.ts             Tipi di dominio (indipendenti da Prisma)
       trades.ts            Logica PURA: validateProposals() / applyTrade()  ← testata
       demo-content.ts      Contenuti da template locali (modalità demo)     ← testata
-      *.test.ts            Test Vitest (trades + demo-content)
+      demo-league.ts       Dataset della lega demo (condiviso seed + reset)
+      import/parse.ts      Parsing tollerante CSV/TSV/incollato               ← testata
+      import/xlsx.ts       Lettura XLSX via exceljs (server)
+      *.test.ts            Test Vitest (trades + demo-content + import/parse)
       repository.ts        Interfaccia astratta LeagueRepository + factory
       prisma-repository.ts Implementazione su Prisma/SQLite
 ```
@@ -135,7 +188,9 @@ src/
 
 ## Sostituire la lega demo con dati reali
 
-Il seed è solo una delle possibili sorgenti. Per collegare dati reali (Leghe Fantacalcio / Fantacalcio.it o un CSV) **non serve toccare UI o API route**: basta fornire una nuova implementazione del repository.
+Il modo più semplice è la scheda **"Configura"** (vedi [Importa la tua lega](#importa-la-tua-lega-da-leghe-fantacalcio)): upload/incolla di CSV/XLSX, anteprima e conferma, senza scrivere codice.
+
+Per integrazioni più strutturate (import automatico da una piattaforma) il seed è solo una delle possibili sorgenti: **non serve toccare UI o API route**, basta fornire una nuova implementazione del repository.
 
 1. Crea una classe che implementa `LeagueRepository` (vedi `src/lib/league/repository.ts`), ad esempio `CsvLeagueRepository` o `FantacalcioApiRepository`, mappando i dati esterni sui **tipi di dominio** in `types.ts`.
 2. Sostituisci l'implementazione restituita dalla factory in `getLeagueRepository()` (o rendila selezionabile via variabile d'ambiente).

@@ -14,14 +14,16 @@ import Gazzetta from "./Gazzetta";
 import Mercato from "./Mercato";
 import Squadra from "./Squadra";
 import Classifica from "./Classifica";
+import Configura from "./Configura";
 
-type TabId = "gazzetta" | "mercato" | "squadra" | "classifica";
+type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "configura";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "gazzetta", label: "La Gazzetta" },
   { id: "mercato", label: "Mercato" },
   { id: "squadra", label: "La Mia Squadra" },
   { id: "classifica", label: "Classifica" },
+  { id: "configura", label: "Configura" },
 ];
 
 interface AppShellProps {
@@ -149,6 +151,7 @@ export default function AppShell({
           )}
           {tab === "squadra" && <Squadra userTeam={userTeam} />}
           {tab === "classifica" && <Classifica standings={standings} />}
+          {tab === "configura" && <Configura />}
         </div>
       </main>
     </>

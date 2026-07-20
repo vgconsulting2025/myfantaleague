@@ -13,7 +13,9 @@ import type {
   TradeRecord,
   TradeStatus,
 } from "./types";
-import type { LeagueRepository, NewTrade } from "./repository";
+import type { LeagueRepository, NewTrade, ImportTeamData } from "./repository";
+import type { ImportResultRow } from "./import/types";
+import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH } from "./demo-league";
 
 type PlayerRow = { id: string; name: string; role: string; club: string; quota: number; fm: number };
 type TeamRow = {
@@ -44,6 +46,35 @@ function mapTeam(t: TeamRow): LeagueTeam {
     isUser: t.isUser,
     players,
   };
+}
+
+function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "team";
+}
+
+function uniqueSlugs(names: string[]): string[] {
+  const seen = new Map<string, number>();
+  return names.map((n) => {
+    const base = slugify(n);
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    return count === 0 ? base : `${base}-${count + 1}`;
+  });
+}
+
+function pickUserIndex(teams: { name: string }[], myTeamName: string | null): number {
+  if (!teams.length) return -1;
+  if (myTeamName) {
+    const i = teams.findIndex((t) => t.name === myTeamName);
+    if (i >= 0) return i;
+  }
+  return 0;
 }
 
 export class PrismaLeagueRepository implements LeagueRepository {
@@ -265,5 +296,192 @@ export class PrismaLeagueRepository implements LeagueRepository {
         })),
       };
     });
+  }
+
+  async replaceLeague(teams: ImportTeamData[], myTeamName: string | null): Promise<void> {
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.flashNews.deleteMany();
+        await tx.article.deleteMany();
+        await tx.edition.deleteMany();
+        await tx.trade.deleteMany();
+        await tx.result.deleteMany();
+        await tx.giornata.deleteMany();
+        await tx.player.deleteMany();
+        await tx.team.deleteMany();
+
+        const slugs = uniqueSlugs(teams.map((t) => t.name));
+        const userIdx = pickUserIndex(teams, myTeamName);
+        for (let i = 0; i < teams.length; i++) {
+          const t = teams[i];
+          await tx.team.create({
+            data: {
+              slug: slugs[i],
+              name: t.name,
+              president: "—",
+              points: 0,
+              isUser: i === userIdx,
+              players: {
+                create: t.players.map((p) => ({
+                  name: p.name,
+                  role: p.role,
+                  club: p.club,
+                  quota: p.quota,
+                  fm: p.fm,
+                })),
+              },
+            },
+          });
+        }
+      },
+      { timeout: 30000 },
+    );
+  }
+
+  async mergeRoster(teams: ImportTeamData[], myTeamName: string | null): Promise<void> {
+    await prisma.$transaction(
+      async (tx) => {
+        for (const t of teams) {
+          const existing = await tx.team.findFirst({ where: { name: t.name } });
+          if (existing) {
+            await tx.player.deleteMany({ where: { teamId: existing.id } });
+            await tx.player.createMany({
+              data: t.players.map((p) => ({
+                name: p.name,
+                role: p.role,
+                club: p.club,
+                quota: p.quota,
+                fm: p.fm,
+                teamId: existing.id,
+              })),
+            });
+          } else {
+            let slug = slugify(t.name);
+            if (await tx.team.findUnique({ where: { slug } })) {
+              slug = `${slug}-${Date.now().toString(36)}`;
+            }
+            await tx.team.create({
+              data: {
+                slug,
+                name: t.name,
+                president: "—",
+                points: 0,
+                isUser: false,
+                players: {
+                  create: t.players.map((p) => ({
+                    name: p.name,
+                    role: p.role,
+                    club: p.club,
+                    quota: p.quota,
+                    fm: p.fm,
+                  })),
+                },
+              },
+            });
+          }
+        }
+
+        if (myTeamName) {
+          await tx.team.updateMany({ data: { isUser: false } });
+          await tx.team.updateMany({ where: { name: myTeamName }, data: { isUser: true } });
+        } else if ((await tx.team.count({ where: { isUser: true } })) === 0) {
+          const first = await tx.team.findFirst({ orderBy: { createdAt: "asc" } });
+          if (first) await tx.team.update({ where: { id: first.id }, data: { isUser: true } });
+        }
+      },
+      { timeout: 30000 },
+    );
+  }
+
+  async importResults(results: ImportResultRow[]): Promise<void> {
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.result.deleteMany();
+        await tx.giornata.deleteMany();
+
+        const byGiornata = new Map<number, ImportResultRow[]>();
+        for (const r of results) {
+          if (!byGiornata.has(r.giornata)) byGiornata.set(r.giornata, []);
+          byGiornata.get(r.giornata)!.push(r);
+        }
+        for (const [number, rows] of [...byGiornata.entries()].sort((a, b) => a[0] - b[0])) {
+          await tx.giornata.create({
+            data: {
+              number,
+              results: {
+                create: rows.map((r) => ({
+                  homeName: r.home,
+                  awayName: r.away,
+                  homeScore: r.homeScore,
+                  awayScore: r.awayScore,
+                  note: r.note,
+                })),
+              },
+            },
+          });
+        }
+
+        // Ricalcola i punti dai risultati (3 vittoria / 1 pareggio).
+        const points = new Map<string, number>();
+        const add = (name: string, d: number) => points.set(name, (points.get(name) ?? 0) + d);
+        for (const r of results) {
+          if (r.homeScore > r.awayScore) add(r.home, 3);
+          else if (r.awayScore > r.homeScore) add(r.away, 3);
+          else {
+            add(r.home, 1);
+            add(r.away, 1);
+          }
+        }
+        await tx.team.updateMany({ data: { points: 0 } });
+        for (const [name, pts] of points.entries()) {
+          await tx.team.updateMany({ where: { name }, data: { points: pts } });
+        }
+      },
+      { timeout: 30000 },
+    );
+  }
+
+  async resetToDemo(): Promise<void> {
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.flashNews.deleteMany();
+        await tx.article.deleteMany();
+        await tx.edition.deleteMany();
+        await tx.trade.deleteMany();
+        await tx.result.deleteMany();
+        await tx.giornata.deleteMany();
+        await tx.player.deleteMany();
+        await tx.team.deleteMany();
+
+        for (const t of DEMO_TEAMS) {
+          await tx.team.create({
+            data: {
+              slug: t.slug,
+              name: t.name,
+              president: t.president,
+              points: t.points,
+              isUser: t.isUser ?? false,
+              players: { create: t.players },
+            },
+          });
+        }
+        await tx.giornata.create({
+          data: {
+            number: DEMO_GIORNATA.number,
+            results: {
+              create: DEMO_GIORNATA.results.map((r) => ({
+                homeName: r.home,
+                awayName: r.away,
+                homeScore: r.homeScore,
+                awayScore: r.awayScore,
+                note: r.note,
+              })),
+            },
+          },
+        });
+        await tx.flashNews.create({ data: { text: DEMO_FLASH, kind: "generic" } });
+      },
+      { timeout: 30000 },
+    );
   }
 }
