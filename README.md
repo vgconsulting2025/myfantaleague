@@ -61,7 +61,7 @@ npm run dev
 
 Apri **http://localhost:3000**.
 
-> Senza `ANTHROPIC_API_KEY` l'app funziona comunque: navighi le rose, la classifica e usi **Simula giornata**. I pulsanti "Genera l'edizione" e "Chiama l'Agente" mostreranno un messaggio d'errore chiaro finché la chiave non è configurata.
+> Senza `ANTHROPIC_API_KEY` l'app parte comunque in **modalità demo**: "Genera l'edizione" e "Chiama l'Agente" producono contenuti da template locali (vedi sotto), oltre a navigazione, rose, classifica e **Simula giornata**.
 
 ### Comandi utili
 
@@ -82,6 +82,18 @@ Apri **http://localhost:3000**.
 2. **La Gazzetta → "Genera l'edizione del giorno"**: l'API route costruisce il contesto (classifica + risultati dell'ultima giornata + scambi recenti) e chiede all'AI 4–6 articoli in JSON. L'edizione viene salvata e resta consultabile nell'**Archivio edizioni**.
 3. **Mercato → "Chiama l'Agente"**: l'API route invia le rose all'AI e riceve 3 proposte di scambio 1-per-1. Ogni proposta è **validata lato server** (i giocatori devono esistere davvero nelle rose indicate); le proposte non valide vengono scartate.
 4. **Accetta / Rifiuta**: se accettato, lo scambio viene eseguito nel DB (i giocatori cambiano rosa, in transazione), registrato nello **Storico scambi** e genera una notizia flash in **Ultim'ora**. Se rifiutato, genera comunque una notizia di mercato saltato.
+
+---
+
+## Modalità demo (senza chiave AI)
+
+Se `ANTHROPIC_API_KEY` **non è impostata** (o è vuota), le route `/api/articles` e `/api/trades` **non falliscono**: generano contenuti da **template locali**, con frasi precompilate variate casualmente e riempite con i **dati reali della lega** (nomi squadre, presidenti, risultati dell'ultima giornata, giocatori delle rose, ultimo scambio).
+
+- La Gazzetta produce 4–6 articoli (cronaca, pagelle, polemiche, mercato, spogliatoio) costruiti sui dati correnti.
+- L'Agente propone 3 scambi 1-per-1 tra giocatori dello **stesso ruolo** realmente presenti nelle rose (passano la stessa validazione delle proposte AI).
+- L'interfaccia mostra un piccolo avviso **"Modalità demo — contenuti non generati da AI"** nella barra sotto l'header.
+
+La logica è pura e testabile: vedi `src/lib/league/demo-content.ts` (`generateDemoArticles`, `generateDemoProposals`) e i relativi test in `src/lib/league/demo-content.test.ts`. Appena si configura la chiave, le stesse route passano automaticamente alla generazione via AI.
 
 ---
 
@@ -107,7 +119,8 @@ src/
     league/
       types.ts             Tipi di dominio (indipendenti da Prisma)
       trades.ts            Logica PURA: validateProposals() / applyTrade()  ← testata
-      trades.test.ts       Test Vitest
+      demo-content.ts      Contenuti da template locali (modalità demo)     ← testata
+      *.test.ts            Test Vitest (trades + demo-content)
       repository.ts        Interfaccia astratta LeagueRepository + factory
       prisma-repository.ts Implementazione su Prisma/SQLite
 ```

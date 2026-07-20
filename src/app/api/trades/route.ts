@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLeagueRepository } from "@/lib/league/repository";
-import { askClaude, parseAiJson } from "@/lib/anthropic";
+import { askClaude, hasAnthropicKey, parseAiJson } from "@/lib/anthropic";
 import { validateProposals } from "@/lib/league/trades";
+import { generateDemoProposals } from "@/lib/league/demo-content";
 import type { LeagueTeam, TradeProposal } from "@/lib/league/types";
 
 export const runtime = "nodejs";
@@ -25,6 +26,14 @@ export async function POST() {
     if (!userTeam) throw new Error("Squadra dell'utente non trovata");
     const others = teams.filter((t) => !t.isUser);
 
+    // Modalità demo: nessuna chiave API → proposte da template locali sui dati reali.
+    if (!hasAnthropicKey()) {
+      const demo = generateDemoProposals(userTeam, others);
+      const proposals = validateProposals(demo, userTeam, others);
+      if (proposals.length === 0) throw new Error("Nessuna proposta generata");
+      return NextResponse.json({ proposals, demo: true });
+    }
+
     const othersText = others
       .map((t) => `SQUADRA "${t.name}" (presidente ${t.president}): ${rosterText(t)}`)
       .join("\n");
@@ -46,7 +55,7 @@ Proponi 3 scambi (1 giocatore per 1 giocatore, stesso ruolo o valore simile) che
     const proposals = validateProposals(parsed as TradeProposal[], userTeam, others);
     if (proposals.length === 0) throw new Error("Nessuna proposta valida");
 
-    return NextResponse.json({ proposals });
+    return NextResponse.json({ proposals, demo: false });
   } catch (err) {
     console.error("[/api/trades]", err);
     const message =

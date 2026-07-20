@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLeagueRepository } from "@/lib/league/repository";
-import { askClaude, parseAiJson } from "@/lib/anthropic";
+import { askClaude, hasAnthropicKey, parseAiJson } from "@/lib/anthropic";
+import { generateDemoArticles } from "@/lib/league/demo-content";
 import type { ArticleInput } from "@/lib/league/types";
 
 export const runtime = "nodejs";
@@ -18,6 +19,18 @@ export async function POST() {
       repo.getLatestGiornata(),
       repo.getTrades(),
     ]);
+
+    // Modalità demo: nessuna chiave API → articoli da template locali.
+    if (!hasAnthropicKey()) {
+      const demoArticles = generateDemoArticles({
+        standings: standingsArr,
+        latest,
+        trades: recentTrades,
+      });
+      if (demoArticles.length === 0) throw new Error("Nessun articolo generato");
+      const edition = await repo.saveEdition(demoArticles, latest?.number ?? 1);
+      return NextResponse.json({ edition, demo: true });
+    }
 
     const standings = standingsArr
       .map((t, i) => `${i + 1}. ${t.name} (pres. ${t.president}) — ${t.points} punti`)
@@ -80,7 +93,7 @@ Il primo articolo è il pezzo di apertura sul risultato più clamoroso della gio
     if (articles.length === 0) throw new Error("Nessun articolo valido nella risposta");
 
     const edition = await repo.saveEdition(articles, giornataNum);
-    return NextResponse.json({ edition });
+    return NextResponse.json({ edition, demo: false });
   } catch (err) {
     console.error("[/api/articles]", err);
     const message =

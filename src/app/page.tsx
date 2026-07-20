@@ -17,6 +17,9 @@ export default async function Home() {
     repo.getLatestGiornata(),
   ]);
 
+  // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
+  const demoMode = !process.env.ANTHROPIC_API_KEY?.trim();
+
   return (
     <AppShell
       userTeam={userTeam}
@@ -25,6 +28,7 @@ export default async function Home() {
       trades={trades}
       flash={flash}
       latestGiornata={latestGiornata}
+      demoMode={demoMode}
     />
   );
 }

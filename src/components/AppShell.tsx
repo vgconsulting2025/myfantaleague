@@ -31,6 +31,7 @@ interface AppShellProps {
   trades: TradeRecord[];
   flash: FlashItem[];
   latestGiornata: Giornata | null;
+  demoMode: boolean;
 }
 
 export default function AppShell({
@@ -40,6 +41,7 @@ export default function AppShell({
   trades,
   flash,
   latestGiornata,
+  demoMode,
 }: AppShellProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -126,7 +128,17 @@ export default function AppShell({
                   : "Nessuna giornata giocata"}
               </div>
             </div>
-            <div className="text-sm italic text-slate-400">La tua lega, viva tutti i giorni.</div>
+            <div className="flex flex-col items-start gap-1 sm:items-end">
+              {demoMode && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Modalità demo — contenuti non generati da AI
+                </span>
+              )}
+              <span className="text-sm italic text-slate-400">
+                La tua lega, viva tutti i giorni.
+              </span>
+            </div>
           </div>
         </div>
 

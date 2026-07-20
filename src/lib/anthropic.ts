@@ -6,6 +6,11 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const MODEL = "claude-sonnet-4-6";
 
+/** true se una chiave API è configurata (altrimenti si usa la modalità demo). */
+export function hasAnthropicKey(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim() !== "";
+}
+
 let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
