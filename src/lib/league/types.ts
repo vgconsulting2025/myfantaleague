@@ -4,6 +4,16 @@
 
 export type Role = "P" | "D" | "C" | "A";
 
+// Identità della fanta-squadra (stemma, maglia, colori sociali).
+export interface TeamIdentity {
+  name: string;
+  crestUrl: string | null;
+  jerseyFrontUrl: string | null;
+  jerseyBackUrl: string | null;
+  color1: string | null;
+  color2: string | null;
+}
+
 export interface LeaguePlayer {
   id: string;
   name: string;
@@ -12,6 +22,8 @@ export interface LeaguePlayer {
   quota: number;
   fm: number;
   imageUrl?: string | null;
+  number?: number | null;
+  owner?: TeamIdentity; // identità della squadra proprietaria (per figurina)
 }
 
 export interface LeagueTeam {
@@ -22,6 +34,11 @@ export interface LeagueTeam {
   points: number;
   isUser: boolean;
   players: LeaguePlayer[];
+  crestUrl?: string | null;
+  jerseyFrontUrl?: string | null;
+  jerseyBackUrl?: string | null;
+  color1?: string | null;
+  color2?: string | null;
 }
 
 export interface PlayerPerformance {
@@ -72,6 +89,7 @@ export interface PlayerWithTeam {
   teamName: string;
   teamSlug: string;
   isUser: boolean;
+  owner: TeamIdentity;
 }
 
 export interface MatchResult {

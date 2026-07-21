@@ -8,8 +8,9 @@ import type {
   ImportResultRow,
   RosterPreview,
 } from "@/lib/league/import/types";
-import type { Role } from "@/lib/league/types";
+import type { LeagueTeam, Role } from "@/lib/league/types";
 import { ErrorBox, SectionTitle, Spinner } from "./ui";
+import TeamIdentityEditor from "./TeamIdentityEditor";
 
 const ROLES: (Role | "?")[] = ["P", "D", "C", "A", "?"];
 
@@ -481,7 +482,7 @@ function CalendarImportPanel({ onDone }: { onDone: () => void }) {
 
 /* ---------------- Sezione principale ---------------- */
 
-export default function Configura() {
+export default function Configura({ userTeam }: { userTeam: LeagueTeam }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -533,6 +534,10 @@ export default function Configura() {
           {message}
         </div>
       )}
+
+      <div className="mb-6">
+        <TeamIdentityEditor team={userTeam} />
+      </div>
 
       <div className="space-y-6">
         <RosterImportPanel onDone={() => refresh("Rose importate con successo.")} />

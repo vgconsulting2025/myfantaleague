@@ -10,6 +10,7 @@ import type {
   LeagueTeam,
   MatchResult,
   Role,
+  TeamIdentity,
   TradeRecord,
   TradeStatus,
 } from "./types";
@@ -20,6 +21,7 @@ import type {
   PerformanceInput,
   CoachRatingInput,
   PeerVoteInput,
+  TeamImageKind,
 } from "./repository";
 import type { ImportResultRow } from "./import/types";
 import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
@@ -34,6 +36,7 @@ type PlayerRow = {
   quota: number;
   fm: number;
   imageUrl?: string | null;
+  number?: number | null;
 };
 type TeamRow = {
   id: string;
@@ -43,9 +46,32 @@ type TeamRow = {
   points: number;
   isUser: boolean;
   players: PlayerRow[];
+  crestUrl?: string | null;
+  jerseyFrontUrl?: string | null;
+  jerseyBackUrl?: string | null;
+  color1?: string | null;
+  color2?: string | null;
 };
 
-function mapPlayer(p: PlayerRow): LeaguePlayer {
+function teamIdentity(t: {
+  name: string;
+  crestUrl?: string | null;
+  jerseyFrontUrl?: string | null;
+  jerseyBackUrl?: string | null;
+  color1?: string | null;
+  color2?: string | null;
+}): TeamIdentity {
+  return {
+    name: t.name,
+    crestUrl: t.crestUrl ?? null,
+    jerseyFrontUrl: t.jerseyFrontUrl ?? null,
+    jerseyBackUrl: t.jerseyBackUrl ?? null,
+    color1: t.color1 ?? null,
+    color2: t.color2 ?? null,
+  };
+}
+
+function mapPlayer(p: PlayerRow, owner?: TeamIdentity): LeaguePlayer {
   return {
     id: p.id,
     name: p.name,
@@ -54,14 +80,17 @@ function mapPlayer(p: PlayerRow): LeaguePlayer {
     quota: p.quota,
     fm: p.fm,
     imageUrl: p.imageUrl ?? null,
+    number: p.number ?? null,
+    owner,
   };
 }
 
 function mapTeam(t: TeamRow): LeagueTeam {
   const roleOrder: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 };
+  const identity = teamIdentity(t);
   const players = [...t.players]
     .sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9) || b.fm - a.fm)
-    .map(mapPlayer);
+    .map((p) => mapPlayer(p, identity));
   return {
     id: t.id,
     slug: t.slug,
@@ -70,6 +99,11 @@ function mapTeam(t: TeamRow): LeagueTeam {
     points: t.points,
     isUser: t.isUser,
     players,
+    crestUrl: identity.crestUrl,
+    jerseyFrontUrl: identity.jerseyFrontUrl,
+    jerseyBackUrl: identity.jerseyBackUrl,
+    color1: identity.color1,
+    color2: identity.color2,
   };
 }
 
@@ -190,16 +224,36 @@ export class PrismaLeagueRepository implements LeagueRepository {
   async getPlayerById(id: string) {
     const p = await prisma.player.findUnique({ where: { id }, include: { team: true } });
     if (!p) return null;
+    const identity = teamIdentity(p.team);
     return {
-      player: mapPlayer(p),
+      player: mapPlayer(p, identity),
       teamName: p.team.name,
       teamSlug: p.team.slug,
       isUser: p.team.isUser,
+      owner: identity,
     };
   }
 
   async setPlayerImage(playerId: string, imageUrl: string | null): Promise<void> {
     await prisma.player.updateMany({ where: { id: playerId }, data: { imageUrl } });
+  }
+
+  async setPlayerNumber(playerId: string, number: number | null): Promise<void> {
+    await prisma.player.updateMany({ where: { id: playerId }, data: { number } });
+  }
+
+  async setUserTeamImage(kind: TeamImageKind, url: string | null): Promise<void> {
+    const data =
+      kind === "crest"
+        ? { crestUrl: url }
+        : kind === "jerseyFront"
+          ? { jerseyFrontUrl: url }
+          : { jerseyBackUrl: url };
+    await prisma.team.updateMany({ where: { isUser: true }, data });
+  }
+
+  async setUserTeamColors(color1: string | null, color2: string | null): Promise<void> {
+    await prisma.team.updateMany({ where: { isUser: true }, data: { color1, color2 } });
   }
 
   async getPerformances(giornataNumber: number): Promise<PerformanceInput[]> {

@@ -19,6 +19,7 @@ import Squadra from "./Squadra";
 import Classifica from "./Classifica";
 import Voti from "./Voti";
 import Configura from "./Configura";
+import BrandMark from "./brand/BrandMark";
 
 type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "voti" | "configura";
 
@@ -85,9 +86,9 @@ export default function AppShell({
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
           <button
             onClick={() => setTab("gazzetta")}
-            className="flex shrink-0 items-center gap-1.5 font-display text-lg font-bold tracking-tight"
+            className="flex shrink-0 items-center gap-2 font-display text-lg font-bold tracking-tight"
           >
-            <span className="text-xl">⚽</span>
+            <BrandMark className="h-8 w-8" />
             <span className="text-oro">
               MyFanta<span className="text-oro-200">League</span>
             </span>
@@ -174,7 +175,7 @@ export default function AppShell({
               userTeam={userTeam}
             />
           )}
-          {tab === "configura" && <Configura />}
+          {tab === "configura" && <Configura userTeam={userTeam} />}
         </div>
       </main>
     </>

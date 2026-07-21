@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueRepository } from "@/lib/league/repository";
-import Figurina from "@/components/figurine/Figurina";
+import FigurinaViewer from "@/components/figurine/FigurinaViewer";
 import FigurinaUploader from "@/components/figurine/FigurinaUploader";
+import PlayerNumberEditor from "@/components/figurine/PlayerNumberEditor";
 import { ROLE_LABELS } from "@/components/theme";
+import { displayNumber } from "@/lib/league/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,7 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
         </Link>
 
         <div className="mt-6 flex flex-col items-center gap-8 sm:flex-row sm:items-start">
-          <Figurina player={player} size="lg" />
+          <FigurinaViewer player={player} />
 
           <div className="w-full">
             <div className="text-xs font-semibold uppercase tracking-widest text-verde">
@@ -54,13 +56,14 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
 
             {!player.imageUrl && (
               <p className="mt-5 max-w-md text-sm italic text-slate-400">
-                Avatar generato dall&apos;app: personaggio di fantasia disegnato in SVG, stabile e
-                riconoscibile per {player.name}.
+                Immagine di default: la maglia della squadra (o una maglia generata nei colori
+                sociali) con nome e numero. Carica una foto per personalizzarla.
               </p>
             )}
 
             {isUser && (
               <div className="max-w-md">
+                <PlayerNumberEditor playerId={player.id} current={displayNumber(player)} />
                 <FigurinaUploader playerId={player.id} hasImage={!!player.imageUrl} />
               </div>
             )}

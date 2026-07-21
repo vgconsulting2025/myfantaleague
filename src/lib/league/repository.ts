@@ -47,6 +47,8 @@ export interface PeerVoteInput {
   comment: string;
 }
 
+export type TeamImageKind = "crest" | "jerseyFront" | "jerseyBack";
+
 export interface NewTrade {
   status: TradeStatus;
   fromTeam: string;
@@ -75,6 +77,9 @@ export interface LeagueRepository {
   getFlashNews(limit?: number): Promise<FlashItem[]>;
   getPlayerById(id: string): Promise<PlayerWithTeam | null>;
   setPlayerImage(playerId: string, imageUrl: string | null): Promise<void>;
+  setPlayerNumber(playerId: string, number: number | null): Promise<void>;
+  setUserTeamImage(kind: TeamImageKind, url: string | null): Promise<void>;
+  setUserTeamColors(color1: string | null, color2: string | null): Promise<void>;
   getPerformances(giornataNumber: number): Promise<PerformanceInput[]>;
   getCoachRatings(limit?: number): Promise<CoachRatingItem[]>;
   getCoachRatingsForGiornata(giornataNumber: number): Promise<CoachRatingItem[]>;

@@ -6,6 +6,7 @@ import type { EnrichedProposal, TradeRecord } from "@/lib/league/types";
 import { ErrorBox, SectionTitle, Spinner } from "./ui";
 import { timeAgo } from "./format";
 import Figurina from "./figurine/Figurina";
+import TeamCrest from "./brand/TeamCrest";
 
 export default function Mercato({
   trades,
@@ -145,8 +146,12 @@ export default function Mercato({
                   </div>
                 </div>
 
-                <div className="mt-3 text-xs uppercase tracking-wide text-slate-400">
-                  Scambio con <span className="font-semibold text-slate-600">{p.otherTeam}</span>
+                <div className="mt-3 flex items-center gap-1.5 text-xs uppercase tracking-wide text-slate-400">
+                  <span>Scambio con</span>
+                  <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-slate-50 ring-1 ring-slate-200">
+                    <TeamCrest crestUrl={p.receivePlayer?.owner?.crestUrl} className="h-full w-full" />
+                  </span>
+                  <span className="font-semibold text-slate-600">{p.otherTeam}</span>
                 </div>
                 {p.rationale && (
                   <p className="mt-2 text-sm leading-relaxed text-slate-700">{p.rationale}</p>

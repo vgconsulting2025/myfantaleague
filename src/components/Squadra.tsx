@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import type { LeagueTeam } from "@/lib/league/types";
 import { ROLE_LABELS, ROLE_ORDER } from "./theme";
-import { RoleBadge, SectionTitle } from "./ui";
+import { RoleBadge } from "./ui";
 import Figurina from "./figurine/Figurina";
-import PlayerAvatar from "./figurine/PlayerAvatar";
+import PlayerThumb from "./figurine/PlayerThumb";
+import TeamCrest from "./brand/TeamCrest";
 
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
@@ -62,11 +63,20 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
 
   return (
     <div>
-      <SectionTitle
-        overline={`Gestione squadra · ${userTeam.president}`}
-        title={userTeam.name}
-        action={<ViewToggle view={view} setView={setView} />}
-      />
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+            <TeamCrest crestUrl={userTeam.crestUrl} className="h-full w-full" />
+          </span>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-verde">
+              Gestione squadra · {userTeam.president}
+            </div>
+            <h2 className="font-display text-3xl font-bold text-slate-900">{userTeam.name}</h2>
+          </div>
+        </div>
+        <ViewToggle view={view} setView={setView} />
+      </div>
 
       {/* Statistiche di sintesi */}
       <div className="mb-5 flex flex-wrap gap-4">
@@ -130,7 +140,7 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
                       className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200 transition hover:ring-verde-500"
                       title={`Figurina di ${p.name}`}
                     >
-                      <PlayerAvatar name={p.name} club={p.club} className="h-full w-full" />
+                      <PlayerThumb player={p} className="h-full w-full" />
                     </Link>
                     <span className="flex-1 text-sm">
                       <span className="font-semibold text-slate-900">{p.name}</span>

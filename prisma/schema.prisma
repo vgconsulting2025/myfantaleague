@@ -11,14 +11,20 @@ datasource db {
 }
 
 model Team {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  name      String
-  president String
-  points    Int      @default(0)
-  isUser    Boolean  @default(false)
-  players   Player[]
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  president      String
+  points         Int      @default(0)
+  isUser         Boolean  @default(false)
+  players        Player[]
+  createdAt      DateTime @default(now())
+  // Identità squadra (file statici referenziati, colori sociali)
+  crestUrl       String?
+  jerseyFrontUrl String?
+  jerseyBackUrl  String?
+  color1         String?
+  color2         String?
 }
 
 model Player {
@@ -29,6 +35,7 @@ model Player {
   quota    Int
   fm       Float
   imageUrl String? // immagine personalizzata caricata dall'utente (file statico)
+  number   Int? // numero di maglia (editabile; default automatico 1-99)
   team     Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId   String
 

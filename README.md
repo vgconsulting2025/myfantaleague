@@ -144,23 +144,30 @@ La **lega dimostrativa** del seed resta sempre disponibile: il pulsante **"Ripri
 
 ---
 
-## Figurine dei giocatori
+## Logo, identità squadra e figurine
 
-Ogni giocatore ha una **figurina** in stile album, disegnata come componente **SVG/CSS originale** (nessuna foto, nessuna caricatura di persone reali):
+**Logo dell'app** — uno scudo geometrico originale con monogramma "MF" nei colori verde scuro/oro (`components/brand/BrandMark.tsx`), usato in header, come **favicon** (`app/icon.svg`) e come **stemma di fallback** dove una squadra non ne ha uno.
 
-- cornice verticale stondata con effetto lucido; **variante "rara" dorata** per fantamedia ≥ 7;
-- fascia superiore coi **colori del club** (`lib/league/clubColors.ts`);
-- **avatar caricaturale**: un volto composto da set di tratti SVG (forma viso, capelli, barba/baffi, carnagione, espressione, accessorio come fascetta/colletto) scelti in modo **deterministico dal nome** — stesso nome → stesso personaggio, ma di fantasia (oltre 1 milione di combinazioni);
-- nome, badge ruolo (P/D/C/A), quotazione e fantamedia.
+**Identità squadra** — dalla scheda **Configura** ogni presidente può dare un volto alla propria fanta-squadra:
 
-Le figurine compaiono in **La Mia Squadra** (griglia per reparto con toggle Figurine/Elenco), nelle proposte del **Mercato** (affiancate con freccia di scambio) e in miniatura nelle liste. Un clic apre la pagina della **figurina ingrandita** (`/figurina/[id]`). La logica (colori club, selezione tratti) è nel layer `lib/` ed è testata.
+- **stemma/logo** (upload immagine),
+- **maglia**: fronte (obbligatoria se si carica la maglia) e retro (facoltativo),
+- oppure, in alternativa alla maglia, **colori sociali** tra combinazioni predefinite.
 
-### Immagini personalizzate
+Se non carica nulla, la squadra usa **logo e colori dell'app**. Tutto è salvato nel modello `Team` (file statici referenziati, colori esadecimali), con la stessa validazione/esclusione da git delle altre immagini.
 
-Dalla **figurina ingrandita** di un giocatore della **propria rosa** puoi caricare un'immagine personalizzata (PNG/JPG/WebP, max 2 MB): sostituisce l'avatar generato **ovunque** compaia quel giocatore (griglia squadra, mercato, miniature). Il pulsante **"Rimuovi immagine"** ripristina l'avatar generato.
+**Figurina** (stile album, `components/figurine/Figurina.tsx`) — cornice nei **colori sociali** (dorata per la variante **rara**, fantamedia ≥ 7), **stemma** della squadra come badge, badge ruolo (P/D/C/A) e **overlay in basso con nome e numero di maglia** (numero editabile per giocatore, default automatico 1-99). L'immagine mostrata segue una **priorità**:
 
-- Le immagini sono salvate come **file statici** in `public/uploads/players/` e referenziate nel DB (`Player.imageUrl`), **non** in base64. La cartella `public/uploads/` è **esclusa da git** (`.gitignore`).
-- La validazione di formato e dimensione avviene **lato server**; si può caricare solo per i giocatori della propria squadra.
+1. **Foto caricata dal presidente** per quel giocatore → mostrata **senza alcuna alterazione**; personalizzazione (bordo colori sociali, badge stemma, overlay nome/numero) applicata solo *intorno/sopra* come elementi separati.
+2. altrimenti la **maglia della squadra** (fronte; sulla figurina ingrandita un toggle mostra il retro se presente),
+3. altrimenti una **maglia generata** nei colori sociali (o default app).
+
+Le figurine compaiono in **La Mia Squadra** (griglia per reparto con toggle Figurine/Elenco), nelle proposte del **Mercato** e in miniatura nelle liste; stemma e colori sono applicati anche a **Classifica** e all'intestazione di **La Mia Squadra**. Un clic apre la **figurina ingrandita** (`/figurina/[id]`), dove il presidente carica la foto, imposta il numero e sfoglia fronte/retro.
+
+### Upload immagini
+
+- File statici in `public/uploads/players/` e `public/uploads/teams/`, referenziati nel DB (**non** base64). La cartella `public/uploads/` è **esclusa da git**.
+- Validazione **lato server** (PNG/JPG/WebP, max 2 MB); si può modificare solo la **propria** squadra/rosa. Logica pura in `lib/league/identity.ts` e `lib/league/uploads.ts`, **testata**.
 - ⚠️ **Il contenuto caricato è responsabilità dell'utente**: caricando un'immagine dichiari di averne i diritti e ti assumi la responsabilità di ciò che pubblichi.
 
 ---
@@ -196,9 +203,14 @@ src/
       import/commit        POST  Scrive la lega importata (replace/merge)
       import/reset         POST  Ripristina la lega demo
       president-vote       POST  Voto tra presidenti (+ /hide per l'admin)
-      players/[id]/image   POST/DELETE  Carica/rimuovi immagine giocatore
+      players/[id]/image   POST/DELETE  Carica/rimuovi foto giocatore
+      players/[id]/number  POST  Numero di maglia
+      team/image           POST/DELETE  Stemma/maglia squadra
+      team/colors          POST  Colori sociali squadra
   components/               UI: AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Voti/Configura
-    figurine/              PlayerAvatar (SVG) + Figurina (card sticker)
+    brand/                 BrandMark (logo/scudo) + TeamCrest (stemma/fallback)
+    figurine/              Figurina + JerseyMark + PlayerThumb + uploader/editor
+  app/icon.svg             Favicon (logo app)
   app/figurina/[id]/       Pagina della figurina ingrandita
   lib/
     db.ts                  Singleton PrismaClient
@@ -208,6 +220,7 @@ src/
       trades.ts            Logica PURA: validateProposals() / applyTrade()  ← testata
       coach.ts             Logica PURA voti allenatori/presidenti           ← testata
       uploads.ts           Validazione immagini caricate (formato/dimensione) ← testata
+      identity.ts          Colori squadra, numero maglia, priorità immagine    ← testata
       demo-content.ts      Contenuti da template locali (modalità demo)     ← testata
       demo-league.ts       Dataset della lega demo (condiviso seed + reset)
       import/parse.ts      Parsing tollerante CSV/TSV/incollato               ← testata
