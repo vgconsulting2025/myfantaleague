@@ -22,14 +22,15 @@ model Team {
 }
 
 model Player {
-  id     String @id @default(cuid())
-  name   String
-  role   String // P | D | C | A
-  club   String
-  quota  Int
-  fm     Float
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId String
+  id       String  @id @default(cuid())
+  name     String
+  role     String // P | D | C | A
+  club     String
+  quota    Int
+  fm       Float
+  imageUrl String? // immagine personalizzata caricata dall'utente (file statico)
+  team     Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId   String
 
   @@index([teamId])
 }

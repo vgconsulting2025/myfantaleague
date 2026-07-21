@@ -44,8 +44,8 @@ export default function Figurina({
   const bandText = readableText(primary);
 
   const frameBg = rare
-    ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#9C7A1E 60%,#F3DE93 100%)"
-    : "linear-gradient(145deg,#ffffff 0%,#dbe1e8 55%,#b9c3ce 100%)";
+    ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#B8901F 60%,#F3DE93 100%)"
+    : "linear-gradient(145deg,#ffffff 0%,#e3eee7 55%,#bcd9c6 100%)";
 
   const card = (
     <div
@@ -54,7 +54,7 @@ export default function Figurina({
     >
       {/* Cornice (bordo colorato) */}
       <div
-        className={`rounded-2xl p-[3px] shadow-md ${rare ? "shadow-amber-300/50" : ""}`}
+        className={`rounded-2xl p-[3px] shadow-md ${rare ? "shadow-oro/40" : ""}`}
         style={{ background: frameBg }}
       >
         <div className="overflow-hidden rounded-[13px] bg-white">
@@ -72,11 +72,20 @@ export default function Figurina({
             </span>
           </div>
 
-          {/* Avatar */}
+          {/* Avatar (immagine caricata o avatar generato) */}
           <div className="relative bg-[radial-gradient(circle_at_50%_32%,#ffffff,#e9eef3)]">
-            <PlayerAvatar name={player.name} club={player.club} className="block h-auto w-full" />
+            {player.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={player.imageUrl}
+                alt={player.name}
+                className="block aspect-[100/118] w-full object-cover"
+              />
+            ) : (
+              <PlayerAvatar name={player.name} club={player.club} className="block h-auto w-full" />
+            )}
             {rare && (
-              <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-400/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-950 shadow">
+              <span className="absolute right-1.5 top-1.5 rounded-full bg-oro px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-verde-900 shadow">
                 ★ Rara
               </span>
             )}
@@ -91,7 +100,7 @@ export default function Figurina({
               <span className="text-slate-500">Quota {player.quota}</span>
               <span
                 className={`font-bold tabular-nums ${
-                  player.fm >= 6.8 ? "text-emerald-600" : "text-slate-700"
+                  player.fm >= 6.8 ? "text-verde" : "text-slate-700"
                 }`}
               >
                 FM {player.fm.toFixed(1)}

@@ -115,7 +115,7 @@ export default function Voti({
           <div
             key={s.teamName}
             className={`grid grid-cols-[2.5rem_1fr_4rem_4rem_4rem] items-center gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 ${
-              s.isUser ? "bg-emerald-50" : ""
+              s.isUser ? "bg-verde-50" : ""
             }`}
           >
             <span
@@ -131,7 +131,7 @@ export default function Voti({
                   {s.label}
                 </span>
                 {s.isUser && (
-                  <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                  <span className="rounded-full bg-verde px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
                     Tu
                   </span>
                 )}
@@ -147,7 +147,7 @@ export default function Voti({
             <span className="text-center text-sm font-semibold tabular-nums text-slate-700">
               {fmt(s.peerAvg)}
             </span>
-            <span className="text-center font-display text-lg font-bold tabular-nums text-emerald-700">
+            <span className="text-center font-display text-lg font-bold tabular-nums text-verde-700">
               {fmt(s.overall)}
             </span>
           </div>
@@ -179,7 +179,7 @@ export default function Voti({
                       <select
                         value={d.score}
                         onChange={(e) => setDraft(s.teamName, { score: Number(e.target.value) })}
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-sm font-bold focus:border-emerald-400 focus:outline-none"
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-sm font-bold focus:border-verde-500 focus:outline-none"
                       >
                         {Array.from({ length: 10 }, (_, k) => k + 1).map((n) => (
                           <option key={n} value={n}>
@@ -194,12 +194,12 @@ export default function Voti({
                         maxLength={140}
                         onChange={(e) => setDraft(s.teamName, { comment: e.target.value })}
                         placeholder="Commento goliardico (facoltativo)"
-                        className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-emerald-400 focus:outline-none"
+                        className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-verde-500 focus:outline-none"
                       />
                       <button
                         onClick={() => vote(s.teamName)}
                         disabled={busy === s.teamName}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                        className="rounded-lg bg-verde px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-verde-700 disabled:opacity-60"
                       >
                         Vota
                       </button>
@@ -227,7 +227,7 @@ export default function Voti({
                 >
                   <span
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-display text-sm font-bold text-white ${
-                      c.score >= 7 ? "bg-emerald-600" : c.score <= 4 ? "bg-rose-500" : "bg-slate-400"
+                      c.score >= 7 ? "bg-verde" : c.score <= 4 ? "bg-rose-500" : "bg-slate-400"
                     }`}
                   >
                     {c.score}
@@ -271,7 +271,7 @@ export default function Voti({
                     </div>
                     <div className="text-slate-700">
                       «{v.comment}»{" "}
-                      <span className="font-bold text-emerald-700">{v.score}/10</span>
+                      <span className="font-bold text-verde-700">{v.score}/10</span>
                     </div>
                   </div>
                   <button

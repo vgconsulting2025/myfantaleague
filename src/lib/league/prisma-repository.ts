@@ -26,7 +26,15 @@ import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
 import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH } from "./demo-league";
 import { computePresidentStandings, validatePeerVote, labelFor } from "./coach";
 
-type PlayerRow = { id: string; name: string; role: string; club: string; quota: number; fm: number };
+type PlayerRow = {
+  id: string;
+  name: string;
+  role: string;
+  club: string;
+  quota: number;
+  fm: number;
+  imageUrl?: string | null;
+};
 type TeamRow = {
   id: string;
   slug: string;
@@ -38,7 +46,15 @@ type TeamRow = {
 };
 
 function mapPlayer(p: PlayerRow): LeaguePlayer {
-  return { id: p.id, name: p.name, role: p.role as Role, club: p.club, quota: p.quota, fm: p.fm };
+  return {
+    id: p.id,
+    name: p.name,
+    role: p.role as Role,
+    club: p.club,
+    quota: p.quota,
+    fm: p.fm,
+    imageUrl: p.imageUrl ?? null,
+  };
 }
 
 function mapTeam(t: TeamRow): LeagueTeam {
@@ -180,6 +196,10 @@ export class PrismaLeagueRepository implements LeagueRepository {
       teamSlug: p.team.slug,
       isUser: p.team.isUser,
     };
+  }
+
+  async setPlayerImage(playerId: string, imageUrl: string | null): Promise<void> {
+    await prisma.player.updateMany({ where: { id: playerId }, data: { imageUrl } });
   }
 
   async getPerformances(giornataNumber: number): Promise<PerformanceInput[]> {

@@ -80,16 +80,16 @@ export default function AppShell({
 
   return (
     <>
-      {/* Header scuro fisso */}
-      <header className="fixed inset-x-0 top-0 z-50 bg-[#0B1220] text-white shadow-lg">
+      {/* Header verde scuro fisso */}
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-oro/30 bg-verde-900 text-white shadow-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
           <button
             onClick={() => setTab("gazzetta")}
             className="flex shrink-0 items-center gap-1.5 font-display text-lg font-bold tracking-tight"
           >
             <span className="text-xl">⚽</span>
-            <span>
-              MyFanta<span className="text-emerald-400">League</span>
+            <span className="text-oro">
+              MyFanta<span className="text-oro-200">League</span>
             </span>
           </button>
 
@@ -102,13 +102,13 @@ export default function AppShell({
                   onClick={() => setTab(t.id)}
                   className={`relative whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide transition ${
                     active
-                      ? "bg-emerald-600 text-white"
-                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      ? "bg-oro text-verde-900 shadow-sm"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {t.label}
                   {t.id === "mercato" && pendingCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-[#0B1220]">
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-oro px-1 text-[10px] font-bold text-verde-900 ring-2 ring-verde-900">
                       {pendingCount}
                     </span>
                   )}
@@ -121,7 +121,7 @@ export default function AppShell({
             onClick={simula}
             disabled={simulating}
             title="Simula una giornata di campionato"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:bg-white/10 disabled:opacity-60"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-oro/40 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-oro transition hover:bg-oro/10 disabled:opacity-60"
           >
             <span className={simulating ? "inline-block animate-spin" : "inline-block"}>⟳</span>
             <span className="hidden sm:inline">
@@ -136,7 +136,7 @@ export default function AppShell({
         <div className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+              <div className="text-xs font-semibold uppercase tracking-widest text-verde">
                 Lega Bar Centrale · Stagione 2025/26
               </div>
               <div className="text-sm text-slate-500">

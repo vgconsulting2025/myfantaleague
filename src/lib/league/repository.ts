@@ -74,6 +74,7 @@ export interface LeagueRepository {
   getTrades(): Promise<TradeRecord[]>;
   getFlashNews(limit?: number): Promise<FlashItem[]>;
   getPlayerById(id: string): Promise<PlayerWithTeam | null>;
+  setPlayerImage(playerId: string, imageUrl: string | null): Promise<void>;
   getPerformances(giornataNumber: number): Promise<PerformanceInput[]>;
   getCoachRatings(limit?: number): Promise<CoachRatingItem[]>;
   getCoachRatingsForGiornata(giornataNumber: number): Promise<CoachRatingItem[]>;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeagueRepository } from "@/lib/league/repository";
 import Figurina from "@/components/figurine/Figurina";
+import FigurinaUploader from "@/components/figurine/FigurinaUploader";
 import { ROLE_LABELS } from "@/components/theme";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
       <div className="mx-auto max-w-3xl px-4 py-10">
         <Link
           href="/"
-          className="text-sm font-semibold text-emerald-700 transition hover:text-emerald-800"
+          className="text-sm font-semibold text-verde-700 transition hover:text-verde-700"
         >
           ← Torna a MyFantaLeague
         </Link>
@@ -34,7 +35,7 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
           <Figurina player={player} size="lg" />
 
           <div className="w-full">
-            <div className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
+            <div className="text-xs font-semibold uppercase tracking-widest text-verde">
               {teamName}
               {isUser ? " · La tua squadra" : ""}
             </div>
@@ -51,10 +52,18 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
               ))}
             </dl>
 
-            <p className="mt-5 max-w-md text-sm italic text-slate-400">
-              Figurina generata dall&apos;app: personaggio di fantasia disegnato in SVG,
-              stabile e riconoscibile per {player.name}. Nessuna foto o immagine reale.
-            </p>
+            {!player.imageUrl && (
+              <p className="mt-5 max-w-md text-sm italic text-slate-400">
+                Avatar generato dall&apos;app: personaggio di fantasia disegnato in SVG, stabile e
+                riconoscibile per {player.name}.
+              </p>
+            )}
+
+            {isUser && (
+              <div className="max-w-md">
+                <FigurinaUploader playerId={player.id} hasImage={!!player.imageUrl} />
+              </div>
+            )}
           </div>
         </div>
       </div>

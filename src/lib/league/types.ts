@@ -11,6 +11,7 @@ export interface LeaguePlayer {
   club: string;
   quota: number;
   fm: number;
+  imageUrl?: string | null;
 }
 
 export interface LeagueTeam {

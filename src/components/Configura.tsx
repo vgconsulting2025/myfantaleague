@@ -39,7 +39,7 @@ function SourceInput({
           type="file"
           accept=".csv,.tsv,.txt,.xlsx,.xls"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-700"
+          className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-verde file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-verde-700"
         />
         {file && (
           <button
@@ -61,7 +61,7 @@ function SourceInput({
         onChange={(e) => setText(e.target.value)}
         rows={5}
         placeholder={"Incolla qui una tabella copiata da Excel/Google Sheets (colonne separate da tab, ; o ,)"}
-        className="w-full rounded-xl border border-slate-200 p-3 font-mono text-xs text-slate-700 focus:border-emerald-400 focus:outline-none"
+        className="w-full rounded-xl border border-slate-200 p-3 font-mono text-xs text-slate-700 focus:border-verde-500 focus:outline-none"
       />
       <button
         onClick={onAnalyze}
@@ -95,7 +95,7 @@ function cellInput(value: string | number, onChange: (v: string) => void, extra 
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-emerald-400 focus:outline-none ${extra}`}
+      className={`w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none ${extra}`}
     />
   );
 }
@@ -248,7 +248,7 @@ function RosterImportPanel({ onDone }: { onDone: () => void }) {
                       <select
                         value={p.role}
                         onChange={(e) => update(i, "role", e.target.value)}
-                        className="w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none"
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
@@ -274,7 +274,7 @@ function RosterImportPanel({ onDone }: { onDone: () => void }) {
               <select
                 value={myTeam}
                 onChange={(e) => setMyTeam(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-verde-500 focus:outline-none"
               >
                 {teams.map((t) => (
                   <option key={t} value={t}>
@@ -312,7 +312,7 @@ function RosterImportPanel({ onDone }: { onDone: () => void }) {
               onClick={commit}
               disabled={committing || hasInvalidRole}
               title={hasInvalidRole ? "Correggi i ruoli evidenziati (P/D/C/A) prima di importare" : ""}
-              className="ml-auto inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ml-auto inline-flex items-center gap-2 rounded-xl bg-verde px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-verde-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {committing ? "Importo..." : `Conferma import (${players.length} giocatori)`}
             </button>
@@ -468,7 +468,7 @@ function CalendarImportPanel({ onDone }: { onDone: () => void }) {
             <button
               onClick={commit}
               disabled={committing}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-verde px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-verde-700 disabled:opacity-60"
             >
               {committing ? "Importo..." : `Conferma import (${results.length} partite)`}
             </button>
@@ -529,7 +529,7 @@ export default function Configura() {
       </p>
 
       {message && (
-        <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+        <div className="mb-5 rounded-xl border border-verde-200 bg-verde-50 px-4 py-3 text-sm font-medium text-verde-700">
           {message}
         </div>
       )}

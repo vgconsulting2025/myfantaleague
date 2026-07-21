@@ -33,7 +33,7 @@ function ViewToggle({
           key={v}
           onClick={() => setView(v)}
           className={`px-3 py-2 transition ${
-            view === v ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-50"
+            view === v ? "bg-verde text-white" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
           {v === "grid" ? "Figurine" : "Elenco"}
@@ -78,14 +78,14 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
       {/* Punti di forza / reparti scoperti (calcolo locale) */}
       {strongest && weakest && (
         <div className="mb-8 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="rounded-2xl border border-verde-200 bg-verde-50 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-verde-700">
               Punto di forza
             </div>
-            <div className="mt-1 font-display text-2xl font-bold text-emerald-900">
+            <div className="mt-1 font-display text-2xl font-bold text-verde-900">
               {ROLE_LABELS[strongest.role]}
             </div>
-            <div className="text-sm text-emerald-800">
+            <div className="text-sm text-verde-700">
               Fantamedia media {strongest.avg.toFixed(2)} · {strongest.count} giocatori
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
                   <li key={p.id} className="flex items-center gap-3 px-4 py-2">
                     <Link
                       href={`/figurina/${p.id}`}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200 transition hover:ring-emerald-400"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200 transition hover:ring-verde-500"
                       title={`Figurina di ${p.name}`}
                     >
                       <PlayerAvatar name={p.name} club={p.club} className="h-full w-full" />
@@ -139,7 +139,7 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
                     <span className="text-xs text-slate-500">quota {p.quota}</span>
                     <span
                       className={`w-14 text-right text-sm font-bold tabular-nums ${
-                        p.fm >= 6.8 ? "text-emerald-600" : "text-slate-700"
+                        p.fm >= 6.8 ? "text-verde" : "text-slate-700"
                       }`}
                     >
                       FM {p.fm.toFixed(1)}

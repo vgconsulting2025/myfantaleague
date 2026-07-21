@@ -78,7 +78,7 @@ export default function Mercato({
           <button
             onClick={chiamaAgente}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-verde px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Chiama l&apos;Agente
           </button>
@@ -107,7 +107,7 @@ export default function Mercato({
                 key={p.id}
                 className={`rounded-2xl border p-5 shadow-sm transition ${
                   p.status === "accepted"
-                    ? "border-emerald-200 bg-emerald-50"
+                    ? "border-verde-200 bg-verde-50"
                     : p.status === "rejected"
                       ? "border-slate-200 bg-slate-50 opacity-70"
                       : "border-slate-200 bg-white"
@@ -128,9 +128,9 @@ export default function Mercato({
                       <span className="text-slate-400">—</span>
                     )}
                   </div>
-                  <div className="font-display text-3xl text-emerald-600">⇄</div>
+                  <div className="font-display text-3xl text-verde">⇄</div>
                   <div className="text-center">
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-verde">
                       Ricevi
                     </div>
                     {p.receivePlayer ? (
@@ -159,7 +159,7 @@ export default function Mercato({
                   {decided ? (
                     <span
                       className={`text-sm font-semibold uppercase tracking-wide ${
-                        p.status === "accepted" ? "text-emerald-700" : "text-rose-600"
+                        p.status === "accepted" ? "text-verde-700" : "text-rose-600"
                       }`}
                     >
                       {p.status === "accepted" ? "✓ Scambio ufficializzato" : "✕ Proposta rifiutata"}
@@ -169,7 +169,7 @@ export default function Mercato({
                       <button
                         onClick={() => decidi(p, true)}
                         disabled={busyId === p.id}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                        className="rounded-lg bg-verde px-4 py-2 text-sm font-semibold text-white transition hover:bg-verde-700 disabled:opacity-60"
                       >
                         Accetta
                       </button>
@@ -207,7 +207,7 @@ export default function Mercato({
               >
                 <span
                   className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white ${
-                    t.status === "accepted" ? "bg-emerald-600" : "bg-rose-500"
+                    t.status === "accepted" ? "bg-verde" : "bg-rose-500"
                   }`}
                 >
                   {t.status === "accepted" ? "✓" : "✕"}

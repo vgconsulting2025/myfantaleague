@@ -3,8 +3,23 @@
 @theme inline {
   --font-sans: var(--font-inter);
   --font-display: var(--font-oswald);
-  --color-campo: #10b981;
-  --color-campo-scuro: #047857;
+
+  /* Palette verde/oro (moderno + editoriale) */
+  --color-verde-50: #eef5f0;
+  --color-verde-100: #d8e9de;
+  --color-verde-200: #bcd9c6;
+  --color-verde-500: #2f7d55;
+  --color-verde-600: #226644;
+  --color-verde-700: #184c33;
+  --color-verde: #123d28;
+  --color-verde-900: #0f2b1e;
+
+  --color-oro-50: #fbf4dd;
+  --color-oro-100: #f6e9bd;
+  --color-oro-200: #ecd589;
+  --color-oro: #d4af37;
+  --color-oro-600: #b8901f;
+  --color-oro-700: #8f6f16;
 }
 
 html,
@@ -13,8 +28,8 @@ body {
 }
 
 body {
-  background: #f4f6f8;
-  color: #0f172a;
+  background: #f5f7f4;
+  color: #14201a;
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
 

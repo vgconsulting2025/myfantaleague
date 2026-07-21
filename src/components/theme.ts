@@ -13,21 +13,21 @@ export const ROLE_ORDER: Role[] = ["P", "D", "C", "A"];
 // Colore del badge ruolo (P/D/C/A).
 export const ROLE_BADGE: Record<Role, string> = {
   P: "bg-amber-500",
-  D: "bg-emerald-600",
+  D: "bg-verde",
   C: "bg-sky-600",
   A: "bg-rose-600",
 };
 
-// Stile "pill" per la categoria dell'articolo.
+// Stile "pill" per la categoria dell'articolo — tinte nella famiglia verde/oro.
 export function categoryStyle(category: string): string {
   const key = category.trim().toUpperCase();
   const map: Record<string, string> = {
-    CRONACA: "bg-emerald-100 text-emerald-800",
-    PAGELLE: "bg-sky-100 text-sky-800",
-    POLEMICHE: "bg-rose-100 text-rose-800",
-    SPOGLIATOIO: "bg-amber-100 text-amber-800",
-    MERCATO: "bg-indigo-100 text-indigo-800",
-    PANCHINE: "bg-orange-100 text-orange-800",
+    CRONACA: "bg-verde-100 text-verde-700",
+    PAGELLE: "bg-oro-100 text-oro-700",
+    POLEMICHE: "bg-oro-200 text-oro-700",
+    SPOGLIATOIO: "bg-verde-50 text-verde-600",
+    MERCATO: "bg-verde-200 text-verde-900",
+    PANCHINE: "bg-oro-50 text-oro-600",
   };
-  return map[key] ?? "bg-slate-100 text-slate-700";
+  return map[key] ?? "bg-verde-100 text-verde-700";
 }

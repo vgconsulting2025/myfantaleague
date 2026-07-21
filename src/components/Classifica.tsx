@@ -17,12 +17,12 @@ export default function Classifica({ standings }: { standings: LeagueTeam[] }) {
             <li
               key={t.id}
               className={`grid grid-cols-[3rem_1fr_auto] items-center gap-4 border-b border-slate-100 px-5 py-3 last:border-b-0 ${
-                t.isUser ? "bg-emerald-50" : ""
+                t.isUser ? "bg-verde-50" : ""
               }`}
             >
               <span
                 className={`text-center font-display text-2xl font-bold ${
-                  i === 0 ? "text-emerald-600" : "text-slate-400"
+                  i === 0 ? "text-verde" : "text-slate-400"
                 }`}
               >
                 {i + 1}
@@ -33,7 +33,7 @@ export default function Classifica({ standings }: { standings: LeagueTeam[] }) {
                     {t.name}
                   </span>
                   {t.isUser && (
-                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    <span className="rounded-full bg-verde px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                       La tua squadra
                     </span>
                   )}

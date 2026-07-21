@@ -155,6 +155,14 @@ Ogni giocatore ha una **figurina** in stile album, disegnata come componente **S
 
 Le figurine compaiono in **La Mia Squadra** (griglia per reparto con toggle Figurine/Elenco), nelle proposte del **Mercato** (affiancate con freccia di scambio) e in miniatura nelle liste. Un clic apre la pagina della **figurina ingrandita** (`/figurina/[id]`). La logica (colori club, selezione tratti) è nel layer `lib/` ed è testata.
 
+### Immagini personalizzate
+
+Dalla **figurina ingrandita** di un giocatore della **propria rosa** puoi caricare un'immagine personalizzata (PNG/JPG/WebP, max 2 MB): sostituisce l'avatar generato **ovunque** compaia quel giocatore (griglia squadra, mercato, miniature). Il pulsante **"Rimuovi immagine"** ripristina l'avatar generato.
+
+- Le immagini sono salvate come **file statici** in `public/uploads/players/` e referenziate nel DB (`Player.imageUrl`), **non** in base64. La cartella `public/uploads/` è **esclusa da git** (`.gitignore`).
+- La validazione di formato e dimensione avviene **lato server**; si può caricare solo per i giocatori della propria squadra.
+- ⚠️ **Il contenuto caricato è responsabilità dell'utente**: caricando un'immagine dichiari di averne i diritti e ti assumi la responsabilità di ciò che pubblichi.
+
 ---
 
 ## Voti agli allenatori
@@ -188,6 +196,7 @@ src/
       import/commit        POST  Scrive la lega importata (replace/merge)
       import/reset         POST  Ripristina la lega demo
       president-vote       POST  Voto tra presidenti (+ /hide per l'admin)
+      players/[id]/image   POST/DELETE  Carica/rimuovi immagine giocatore
   components/               UI: AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Voti/Configura
     figurine/              PlayerAvatar (SVG) + Figurina (card sticker)
   app/figurina/[id]/       Pagina della figurina ingrandita
@@ -198,6 +207,7 @@ src/
       types.ts             Tipi di dominio (indipendenti da Prisma)
       trades.ts            Logica PURA: validateProposals() / applyTrade()  ← testata
       coach.ts             Logica PURA voti allenatori/presidenti           ← testata
+      uploads.ts           Validazione immagini caricate (formato/dimensione) ← testata
       demo-content.ts      Contenuti da template locali (modalità demo)     ← testata
       demo-league.ts       Dataset della lega demo (condiviso seed + reset)
       import/parse.ts      Parsing tollerante CSV/TSV/incollato               ← testata
