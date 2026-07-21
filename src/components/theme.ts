@@ -27,6 +27,7 @@ export function categoryStyle(category: string): string {
     POLEMICHE: "bg-rose-100 text-rose-800",
     SPOGLIATOIO: "bg-amber-100 text-amber-800",
     MERCATO: "bg-indigo-100 text-indigo-800",
+    PANCHINE: "bg-orange-100 text-orange-800",
   };
   return map[key] ?? "bg-slate-100 text-slate-700";
 }

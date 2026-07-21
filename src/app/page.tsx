@@ -5,16 +5,34 @@ import AppShell from "@/components/AppShell";
 // devono riflettersi immediatamente).
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const repo = getLeagueRepository();
+  const initialTab = (await searchParams)?.tab ?? "";
 
-  const [userTeam, standings, editions, trades, flash, latestGiornata] = await Promise.all([
+  const [
+    userTeam,
+    standings,
+    editions,
+    trades,
+    flash,
+    latestGiornata,
+    presidentStandings,
+    peerVotes,
+    coachRatings,
+  ] = await Promise.all([
     repo.getUserTeam(),
     repo.getStandings(),
     repo.getEditions(),
     repo.getTrades(),
     repo.getFlashNews(8),
     repo.getLatestGiornata(),
+    repo.getPresidentStandings(),
+    repo.getPeerVotes(),
+    repo.getCoachRatings(12),
   ]);
 
   // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
@@ -28,7 +46,11 @@ export default async function Home() {
       trades={trades}
       flash={flash}
       latestGiornata={latestGiornata}
+      presidentStandings={presidentStandings}
+      peerVotes={peerVotes}
+      coachRatings={coachRatings}
       demoMode={demoMode}
+      initialTab={initialTab}
     />
   );
 }

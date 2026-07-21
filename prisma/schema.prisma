@@ -35,10 +35,60 @@ model Player {
 }
 
 model Giornata {
-  id       String   @id @default(cuid())
-  number   Int      @unique
-  playedAt DateTime @default(now())
-  results  Result[]
+  id           String        @id @default(cuid())
+  number       Int           @unique
+  playedAt     DateTime      @default(now())
+  results      Result[]
+  performances Performance[]
+  coachRatings CoachRating[]
+  peerVotes    PeerVote[]
+}
+
+// Prestazione di un giocatore in una giornata (voto + bonus) e se schierato.
+model Performance {
+  id         String   @id @default(cuid())
+  giornata   Giornata @relation(fields: [giornataId], references: [id], onDelete: Cascade)
+  giornataId String
+  teamName   String
+  president  String
+  playerName String
+  role       String
+  vote       Float
+  bonus      Float    @default(0)
+  fielded    Boolean
+
+  @@index([giornataId])
+}
+
+// Voto AI (1-10) all'allenatore per una giornata, con commento goliardico.
+model CoachRating {
+  id         String   @id @default(cuid())
+  giornata   Giornata @relation(fields: [giornataId], references: [id], onDelete: Cascade)
+  giornataId String
+  teamName   String
+  president  String
+  score      Int
+  comment    String
+  createdAt  DateTime @default(now())
+
+  @@index([giornataId])
+  @@index([teamName])
+}
+
+// Voto tra presidenti (identità = teamName). Un team non può votare se stesso.
+model PeerVote {
+  id         String   @id @default(cuid())
+  giornata   Giornata @relation(fields: [giornataId], references: [id], onDelete: Cascade)
+  giornataId String
+  fromTeam   String
+  toTeam     String
+  score      Int
+  comment    String   @default("")
+  hidden     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([toTeam])
+  @@index([giornataId])
 }
 
 model Result {

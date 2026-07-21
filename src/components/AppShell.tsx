@@ -3,26 +3,31 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
+  CoachRatingItem,
   Edition,
   EnrichedProposal,
   FlashItem,
   Giornata,
   LeagueTeam,
+  PeerVoteItem,
+  PresidentStanding,
   TradeRecord,
 } from "@/lib/league/types";
 import Gazzetta from "./Gazzetta";
 import Mercato from "./Mercato";
 import Squadra from "./Squadra";
 import Classifica from "./Classifica";
+import Voti from "./Voti";
 import Configura from "./Configura";
 
-type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "configura";
+type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "voti" | "configura";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "gazzetta", label: "La Gazzetta" },
   { id: "mercato", label: "Mercato" },
   { id: "squadra", label: "La Mia Squadra" },
   { id: "classifica", label: "Classifica" },
+  { id: "voti", label: "Voti" },
   { id: "configura", label: "Configura" },
 ];
 
@@ -33,7 +38,11 @@ interface AppShellProps {
   trades: TradeRecord[];
   flash: FlashItem[];
   latestGiornata: Giornata | null;
+  presidentStandings: PresidentStanding[];
+  peerVotes: PeerVoteItem[];
+  coachRatings: CoachRatingItem[];
   demoMode: boolean;
+  initialTab?: string;
 }
 
 export default function AppShell({
@@ -43,11 +52,17 @@ export default function AppShell({
   trades,
   flash,
   latestGiornata,
+  presidentStandings,
+  peerVotes,
+  coachRatings,
   demoMode,
+  initialTab,
 }: AppShellProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [tab, setTab] = useState<TabId>("gazzetta");
+  const [tab, setTab] = useState<TabId>(
+    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "gazzetta",
+  );
   const [proposals, setProposals] = useState<EnrichedProposal[]>([]);
   const [simulating, setSimulating] = useState(false);
 
@@ -151,6 +166,14 @@ export default function AppShell({
           )}
           {tab === "squadra" && <Squadra userTeam={userTeam} />}
           {tab === "classifica" && <Classifica standings={standings} />}
+          {tab === "voti" && (
+            <Voti
+              standings={presidentStandings}
+              peerVotes={peerVotes}
+              coachRatings={coachRatings}
+              userTeam={userTeam}
+            />
+          )}
           {tab === "configura" && <Configura />}
         </div>
       </main>

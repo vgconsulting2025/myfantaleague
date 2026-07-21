@@ -8,17 +8,44 @@
 
 import type {
   ArticleInput,
+  CoachRatingItem,
   Edition,
   FlashItem,
   Giornata,
   LeagueTeam,
   MatchResult,
+  PeerVoteItem,
   PlayerWithTeam,
+  PresidentStanding,
   Role,
   TradeRecord,
   TradeStatus,
 } from "./types";
 import type { ImportResultRow } from "./import/types";
+
+export interface PerformanceInput {
+  teamName: string;
+  president: string;
+  playerName: string;
+  role: Role;
+  vote: number;
+  bonus: number;
+  fielded: boolean;
+}
+
+export interface CoachRatingInput {
+  teamName: string;
+  president: string;
+  score: number;
+  comment: string;
+}
+
+export interface PeerVoteInput {
+  fromTeam: string;
+  toTeam: string;
+  score: number;
+  comment: string;
+}
 
 export interface NewTrade {
   status: TradeStatus;
@@ -47,6 +74,11 @@ export interface LeagueRepository {
   getTrades(): Promise<TradeRecord[]>;
   getFlashNews(limit?: number): Promise<FlashItem[]>;
   getPlayerById(id: string): Promise<PlayerWithTeam | null>;
+  getPerformances(giornataNumber: number): Promise<PerformanceInput[]>;
+  getCoachRatings(limit?: number): Promise<CoachRatingItem[]>;
+  getCoachRatingsForGiornata(giornataNumber: number): Promise<CoachRatingItem[]>;
+  getPeerVotes(): Promise<PeerVoteItem[]>;
+  getPresidentStandings(): Promise<PresidentStanding[]>;
 
   // Scrittura
   saveEdition(articles: ArticleInput[], giornata: number | null): Promise<Edition>;
@@ -61,7 +93,17 @@ export interface LeagueRepository {
   recordGiornata(
     results: MatchResult[],
     pointsByTeamName: Record<string, number>,
+    performances?: PerformanceInput[],
   ): Promise<Giornata>;
+  saveCoachRatings(giornataNumber: number, ratings: CoachRatingInput[]): Promise<void>;
+  savePeerVotes(giornataNumber: number, votes: PeerVoteInput[]): Promise<void>;
+  addPeerVote(
+    fromTeam: string,
+    toTeam: string,
+    score: number,
+    comment: string,
+  ): Promise<{ ok: boolean; error?: string }>;
+  hidePeerVote(id: string): Promise<void>;
 
   // Import lega
   replaceLeague(teams: ImportTeamData[], myTeamName: string | null): Promise<void>;

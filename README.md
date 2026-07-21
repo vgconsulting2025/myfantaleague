@@ -157,6 +157,18 @@ Le figurine compaiono in **La Mia Squadra** (griglia per reparto con toggle Figu
 
 ---
 
+## Voti agli allenatori
+
+Rubrica goliardica sui **presidenti** della lega, nella scheda **Voti**.
+
+- **Voto automatico dell'AI**: a ogni "Simula giornata" vengono generati i voti dei giocatori e la **formazione** schierata da ciascun presidente; l'AI (o, in modalità demo, un motore locale basato sugli stessi dati) assegna un **voto 1-10** e un commento sarcastico che punisce i gioielli lasciati in panchina e i titolari flop. I voti sono salvati e collegati alla giornata; una rubrica fissa **"PANCHINE"** entra nell'edizione della Gazzetta.
+- **Voto tra presidenti**: ciascun presidente può votare (1-10) gli altri con un commento facoltativo (max 140 caratteri). **Non si può votare la propria squadra.** La **bacheca** mostra i commenti ricevuti senza filtri; come admin di lega puoi rimuovere un commento.
+- **Classifica presidenti** per media voto (AI + lega) con **badge scherzosi**: 🏆 *Allenatore del mese* al migliore, 🪑 *Panchina d'oro* al peggiore.
+
+La logica pura (valutazione allenatore, divieto di autovoto, calcolo medie e badge) è in `lib/league/coach.ts` ed è testata.
+
+---
+
 ## Architettura
 
 ```
@@ -175,7 +187,8 @@ src/
       import/preview       POST  Analizza file/testo → anteprima strutturata
       import/commit        POST  Scrive la lega importata (replace/merge)
       import/reset         POST  Ripristina la lega demo
-  components/               UI: AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Configura
+      president-vote       POST  Voto tra presidenti (+ /hide per l'admin)
+  components/               UI: AppShell + tab Gazzetta/Mercato/Squadra/Classifica/Voti/Configura
     figurine/              PlayerAvatar (SVG) + Figurina (card sticker)
   app/figurina/[id]/       Pagina della figurina ingrandita
   lib/
@@ -184,6 +197,7 @@ src/
     league/
       types.ts             Tipi di dominio (indipendenti da Prisma)
       trades.ts            Logica PURA: validateProposals() / applyTrade()  ← testata
+      coach.ts             Logica PURA voti allenatori/presidenti           ← testata
       demo-content.ts      Contenuti da template locali (modalità demo)     ← testata
       demo-league.ts       Dataset della lega demo (condiviso seed + reset)
       import/parse.ts      Parsing tollerante CSV/TSV/incollato               ← testata

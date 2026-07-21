@@ -19,6 +19,7 @@ export async function POST() {
       repo.getLatestGiornata(),
       repo.getTrades(),
     ]);
+    const coachRatings = latest ? await repo.getCoachRatingsForGiornata(latest.number) : [];
 
     // Modalità demo: nessuna chiave API → articoli da template locali.
     if (!hasAnthropicKey()) {
@@ -26,6 +27,7 @@ export async function POST() {
         standings: standingsArr,
         latest,
         trades: recentTrades,
+        coachRatings,
       });
       if (demoArticles.length === 0) throw new Error("Nessun articolo generato");
       const edition = await repo.saveEdition(demoArticles, latest?.number ?? 1);
@@ -55,6 +57,17 @@ export async function POST() {
 
     const giornataNum = latest?.number ?? 1;
 
+    const panchine = coachRatings.length
+      ? coachRatings
+          .slice()
+          .sort((a, b) => a.score - b.score)
+          .map(
+            (c) =>
+              `${c.president && c.president !== "—" ? c.president : c.teamName}: ${c.score}/10 — ${c.comment}`,
+          )
+          .join("\n")
+      : "Nessun voto agli allenatori.";
+
     const prompt = `Sei il redattore capo della gazzetta di una lega di fantacalcio italiana chiamata "Lega Bar Centrale". Scrivi con tono da quotidiano sportivo italiano: ironico, epico, con soprannomi e drammi da bar.
 
 CLASSIFICA:
@@ -66,9 +79,12 @@ ${results}
 MERCATO RECENTE:
 ${trades}
 
-Genera da 4 a 6 articoli sulla giornata e sul mercato. Rispondi SOLO con JSON valido, nessun testo prima o dopo, nessun markdown. Formato:
-[{"kicker":"occhiello breve","title":"titolo a effetto","body":"articolo di 60-90 parole","category":"CRONACA|PAGELLE|POLEMICHE|SPOGLIATOIO|MERCATO"}]
-Il primo articolo è il pezzo di apertura sul risultato più clamoroso della giornata.`;
+VOTI AGLI ALLENATORI (dal peggiore al migliore):
+${panchine}
+
+Genera da 4 a 6 articoli sulla giornata, sul mercato e sui voti agli allenatori. Rispondi SOLO con JSON valido, nessun testo prima o dopo, nessun markdown. Formato:
+[{"kicker":"occhiello breve","title":"titolo a effetto","body":"articolo di 60-90 parole","category":"CRONACA|PAGELLE|POLEMICHE|SPOGLIATOIO|MERCATO|PANCHINE"}]
+Il primo articolo è il pezzo di apertura sul risultato più clamoroso della giornata. Includi SEMPRE un articolo con category "PANCHINE" che sbeffeggia chi ha sbagliato la formazione (gioielli in panchina, titolari flop).`;
 
     const raw = await askClaude(prompt, 2500);
     const parsed = parseAiJson<unknown>(raw);

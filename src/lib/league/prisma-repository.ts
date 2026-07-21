@@ -13,9 +13,18 @@ import type {
   TradeRecord,
   TradeStatus,
 } from "./types";
-import type { LeagueRepository, NewTrade, ImportTeamData } from "./repository";
+import type {
+  LeagueRepository,
+  NewTrade,
+  ImportTeamData,
+  PerformanceInput,
+  CoachRatingInput,
+  PeerVoteInput,
+} from "./repository";
 import type { ImportResultRow } from "./import/types";
+import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
 import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH } from "./demo-league";
+import { computePresidentStandings, validatePeerVote, labelFor } from "./coach";
 
 type PlayerRow = { id: string; name: string; role: string; club: string; quota: number; fm: number };
 type TeamRow = {
@@ -173,6 +182,146 @@ export class PrismaLeagueRepository implements LeagueRepository {
     };
   }
 
+  async getPerformances(giornataNumber: number): Promise<PerformanceInput[]> {
+    const g = await prisma.giornata.findUnique({
+      where: { number: giornataNumber },
+      include: { performances: true },
+    });
+    if (!g) return [];
+    return g.performances.map((p) => ({
+      teamName: p.teamName,
+      president: p.president,
+      playerName: p.playerName,
+      role: p.role as Role,
+      vote: p.vote,
+      bonus: p.bonus,
+      fielded: p.fielded,
+    }));
+  }
+
+  async getCoachRatings(limit = 12): Promise<CoachRatingItem[]> {
+    const rows = await prisma.coachRating.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: { giornata: true },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      giornata: r.giornata.number,
+      teamName: r.teamName,
+      president: r.president,
+      score: r.score,
+      comment: r.comment,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  async getCoachRatingsForGiornata(giornataNumber: number): Promise<CoachRatingItem[]> {
+    const g = await prisma.giornata.findUnique({
+      where: { number: giornataNumber },
+      include: { coachRatings: true },
+    });
+    if (!g) return [];
+    return g.coachRatings.map((r) => ({
+      id: r.id,
+      giornata: g.number,
+      teamName: r.teamName,
+      president: r.president,
+      score: r.score,
+      comment: r.comment,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  async getPeerVotes(): Promise<PeerVoteItem[]> {
+    const [rows, teams] = await Promise.all([
+      prisma.peerVote.findMany({
+        where: { hidden: false },
+        orderBy: { createdAt: "desc" },
+        include: { giornata: true },
+      }),
+      prisma.team.findMany({ select: { name: true, president: true } }),
+    ]);
+    const presByTeam = new Map(teams.map((t) => [t.name, t.president]));
+    return rows.map((v) => ({
+      id: v.id,
+      giornata: v.giornata.number,
+      fromTeam: v.fromTeam,
+      toTeam: v.toTeam,
+      fromLabel: labelFor(v.fromTeam, presByTeam.get(v.fromTeam) ?? ""),
+      score: v.score,
+      comment: v.comment,
+      hidden: v.hidden,
+      createdAt: v.createdAt.toISOString(),
+    }));
+  }
+
+  async getPresidentStandings(): Promise<PresidentStanding[]> {
+    const [teams, ratings, votes] = await Promise.all([
+      prisma.team.findMany({
+        orderBy: { createdAt: "asc" },
+        select: { name: true, president: true, isUser: true },
+      }),
+      prisma.coachRating.findMany({ select: { teamName: true, score: true } }),
+      prisma.peerVote.findMany({ select: { toTeam: true, score: true, hidden: true } }),
+    ]);
+    return computePresidentStandings(
+      teams.map((t) => ({ teamName: t.name, president: t.president, isUser: t.isUser })),
+      ratings,
+      votes,
+    );
+  }
+
+  async saveCoachRatings(giornataNumber: number, ratings: CoachRatingInput[]): Promise<void> {
+    const g = await prisma.giornata.findUnique({ where: { number: giornataNumber } });
+    if (!g || !ratings.length) return;
+    await prisma.coachRating.createMany({
+      data: ratings.map((r) => ({
+        giornataId: g.id,
+        teamName: r.teamName,
+        president: r.president,
+        score: r.score,
+        comment: r.comment,
+      })),
+    });
+  }
+
+  async savePeerVotes(giornataNumber: number, votes: PeerVoteInput[]): Promise<void> {
+    const g = await prisma.giornata.findUnique({ where: { number: giornataNumber } });
+    if (!g || !votes.length) return;
+    await prisma.peerVote.createMany({
+      data: votes.map((v) => ({
+        giornataId: g.id,
+        fromTeam: v.fromTeam,
+        toTeam: v.toTeam,
+        score: v.score,
+        comment: v.comment,
+      })),
+    });
+  }
+
+  async addPeerVote(
+    fromTeam: string,
+    toTeam: string,
+    score: number,
+    comment: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const valid = validatePeerVote(fromTeam, toTeam, score, comment);
+    if (!valid.ok) return valid;
+    const g = await prisma.giornata.findFirst({ orderBy: { number: "desc" } });
+    if (!g) return { ok: false, error: "Nessuna giornata giocata: simula prima una giornata." };
+    const count = await prisma.team.count({ where: { name: { in: [fromTeam, toTeam] } } });
+    if (count < 2) return { ok: false, error: "Squadra non trovata." };
+    await prisma.peerVote.create({
+      data: { giornataId: g.id, fromTeam, toTeam, score, comment: comment.slice(0, 140) },
+    });
+    return { ok: true };
+  }
+
+  async hidePeerVote(id: string): Promise<void> {
+    await prisma.peerVote.updateMany({ where: { id }, data: { hidden: true } });
+  }
+
   async getFlashNews(limit = 8): Promise<FlashItem[]> {
     const items = await prisma.flashNews.findMany({
       orderBy: { createdAt: "desc" },
@@ -269,6 +418,7 @@ export class PrismaLeagueRepository implements LeagueRepository {
   async recordGiornata(
     results: MatchResult[],
     pointsByTeamName: Record<string, number>,
+    performances?: PerformanceInput[],
   ): Promise<Giornata> {
     return prisma.$transaction(async (tx) => {
       const last = await tx.giornata.findFirst({ orderBy: { number: "desc" } });
@@ -289,6 +439,21 @@ export class PrismaLeagueRepository implements LeagueRepository {
         },
         include: { results: true },
       });
+
+      if (performances && performances.length) {
+        await tx.performance.createMany({
+          data: performances.map((p) => ({
+            giornataId: g.id,
+            teamName: p.teamName,
+            president: p.president,
+            playerName: p.playerName,
+            role: p.role,
+            vote: p.vote,
+            bonus: p.bonus,
+            fielded: p.fielded,
+          })),
+        });
+      }
 
       for (const [teamName, delta] of Object.entries(pointsByTeamName)) {
         if (!delta) continue;

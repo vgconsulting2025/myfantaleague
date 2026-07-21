@@ -23,6 +23,49 @@ export interface LeagueTeam {
   players: LeaguePlayer[];
 }
 
+export interface PlayerPerformance {
+  playerName: string;
+  role: Role;
+  vote: number;
+  bonus: number;
+  fielded: boolean;
+}
+
+export interface CoachRatingItem {
+  id: string;
+  giornata: number;
+  teamName: string;
+  president: string;
+  score: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface PeerVoteItem {
+  id: string;
+  giornata: number;
+  fromTeam: string;
+  toTeam: string;
+  fromLabel: string;
+  score: number;
+  comment: string;
+  hidden: boolean;
+  createdAt: string;
+}
+
+export interface PresidentStanding {
+  teamName: string;
+  president: string;
+  label: string;
+  isUser: boolean;
+  aiAvg: number | null;
+  aiCount: number;
+  peerAvg: number | null;
+  peerCount: number;
+  overall: number | null;
+  badges: string[];
+}
+
 export interface PlayerWithTeam {
   player: LeaguePlayer;
   teamName: string;

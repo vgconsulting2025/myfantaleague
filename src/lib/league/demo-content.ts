@@ -5,6 +5,7 @@
 
 import type {
   ArticleInput,
+  CoachRatingItem,
   Giornata,
   LeaguePlayer,
   LeagueTeam,
@@ -12,6 +13,8 @@ import type {
   TradeProposal,
   TradeRecord,
 } from "./types";
+import type { PerformanceInput, CoachRatingInput, PeerVoteInput } from "./repository";
+import { evaluateCoach } from "./coach";
 
 const ROLE_IT: Record<Role, string> = {
   P: "portiere",
@@ -34,10 +37,11 @@ export interface DemoArticleContext {
   standings: LeagueTeam[];
   latest: Giornata | null;
   trades: TradeRecord[];
+  coachRatings?: CoachRatingItem[];
 }
 
 export function generateDemoArticles(ctx: DemoArticleContext): ArticleInput[] {
-  const { standings, latest, trades } = ctx;
+  const { standings, latest, trades, coachRatings } = ctx;
   const leader = standings[0];
   const last = standings[standings.length - 1];
   const articles: ArticleInput[] = [];
@@ -184,7 +188,115 @@ export function generateDemoArticles(ctx: DemoArticleContext): ArticleInput[] {
     });
   }
 
+  // 6. Panchine: rubrica fissa sui voti agli allenatori (il peggiore della giornata).
+  if (coachRatings && coachRatings.length) {
+    const worst = [...coachRatings].sort((a, b) => a.score - b.score)[0];
+    const label = worst.president && worst.president !== "—" ? worst.president : worst.teamName;
+    articles.push({
+      kicker: "Voti agli allenatori",
+      category: "PANCHINE",
+      title: pick([
+        `${label} bocciato: ${worst.score} in pagella`,
+        `Panchina d'oro per ${label}`,
+        `${label}, disastro dalla panchina`,
+      ]),
+      body: `${worst.comment} Voto dell'Agente: ${worst.score}/10. ${pick([
+        "Gli altri presidenti gongolano.",
+        "La lega ride, lui un po' meno.",
+        "C'è già chi lo candida alla Panchina d'oro.",
+      ])}`,
+    });
+  }
+
   return articles;
+}
+
+/* ---------------- Voti agli allenatori (modalità demo) ---------------- */
+
+function buildCoachComment(
+  ev: ReturnType<typeof evaluateCoach>,
+  label: string,
+): string {
+  const gem = ev.benchedGems[0];
+  const flop = ev.startedFlops[0];
+  const fv = (n: number) => n.toFixed(1);
+  if (ev.score >= 8) {
+    return pick([
+      `${label} da manuale: formazione perfetta, l'Agente si inchina.`,
+      `Modulo azzeccato e scelte giuste: ${label} sa il fatto suo.`,
+      `Niente da eccepire: ${label} legge la partita come un mister vero.`,
+    ]);
+  }
+  if (gem && flop) {
+    return pick([
+      `${label}, ma ${gem.playerName} in panchina (${fv(gem.vote + gem.bonus)}) e ${flop.playerName} titolare (${fv(flop.vote + flop.bonus)})? Coraggioso.`,
+      `Capolavoro al contrario di ${label}: dentro ${flop.playerName}, fuori ${gem.playerName}. Chapeau.`,
+    ]);
+  }
+  if (gem) {
+    return pick([
+      `${label} lascia ${gem.playerName} (${fv(gem.vote + gem.bonus)}) a scaldare la panchina. Rimpianto totale.`,
+      `Il cruccio di ${label} ha un nome: ${gem.playerName}, tenuto fuori senza motivo.`,
+    ]);
+  }
+  if (flop) {
+    return pick([
+      `${label} si affida a ${flop.playerName} (${fv(flop.vote + flop.bonus)}) e ne paga il conto.`,
+      `Fiducia mal riposta di ${label} in ${flop.playerName}: serataccia.`,
+    ]);
+  }
+  return pick([
+    `${label} porta a casa il compitino, senza infamia e senza lode.`,
+    `Giornata anonima per ${label}: formazione col pilota automatico.`,
+  ]);
+}
+
+export function generateDemoCoachRatings(
+  perfByTeam: Map<string, PerformanceInput[]>,
+  teams: { name: string; president: string }[],
+): CoachRatingInput[] {
+  return teams.map((t) => {
+    const perfs = (perfByTeam.get(t.name) ?? []).map((p) => ({
+      playerName: p.playerName,
+      role: p.role,
+      vote: p.vote,
+      bonus: p.bonus,
+      fielded: p.fielded,
+    }));
+    const ev = evaluateCoach(perfs);
+    const label = t.president && t.president !== "—" ? t.president : t.name;
+    return { teamName: t.name, president: t.president, score: ev.score, comment: buildCoachComment(ev, label) };
+  });
+}
+
+export function generateSimulatedPeerVotes(
+  teams: { name: string; president: string; isUser: boolean }[],
+): PeerVoteInput[] {
+  const out: PeerVoteInput[] = [];
+  const voters = teams.filter((t) => !t.isUser);
+  for (const from of voters) {
+    const targets = shuffle(teams.filter((t) => t.name !== from.name)).slice(0, 2);
+    for (const to of targets) {
+      const score = 4 + Math.floor(Math.random() * 6); // 4-9
+      out.push({ fromTeam: from.name, toTeam: to.name, score, comment: buildPeerComment(score) });
+    }
+  }
+  return out;
+}
+
+function buildPeerComment(score: number): string {
+  if (score >= 8) {
+    return pick(["Rispetto, sai schierarla.", "Formazione da applausi.", "Poco da dire: superiore."]);
+  }
+  if (score <= 5) {
+    return pick([
+      "Ma chi te la fa la formazione?",
+      "Con quella panchina ci vinco pure io.",
+      "Anti-calcio puro.",
+      "Modulo a caso, come sempre.",
+    ]);
+  }
+  return pick(["Compitino, niente di che.", "Ti è andata bene stavolta.", "Mah, si può fare di più."]);
 }
 
 /* ---------------- Proposte di scambio dell'Agente ---------------- */
