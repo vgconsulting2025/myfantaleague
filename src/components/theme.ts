@@ -27,6 +27,7 @@ export function categoryStyle(category: string): string {
     POLEMICHE: "bg-oro-200 text-oro-700",
     SPOGLIATOIO: "bg-verde-50 text-verde-600",
     MERCATO: "bg-verde-200 text-verde-900",
+    SVINCOLATI: "bg-oro-200 text-oro-800",
     PANCHINE: "bg-oro-50 text-oro-600",
   };
   return map[key] ?? "bg-verde-100 text-verde-700";

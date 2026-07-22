@@ -2,10 +2,13 @@
 
 import { prisma } from "@/lib/db";
 import type {
+  Article,
   ArticleInput,
   Edition,
   FlashItem,
+  FreeAgentProposalItem,
   Giornata,
+  LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
   MatchResult,
@@ -22,10 +25,12 @@ import type {
   CoachRatingInput,
   PeerVoteInput,
   TeamImageKind,
+  FreeAgentInput,
+  NewFreeAgentProposal,
 } from "./repository";
 import type { ImportResultRow } from "./import/types";
 import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
-import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH } from "./demo-league";
+import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH, DEMO_FREE_AGENTS } from "./demo-league";
 import { computePresidentStandings, validatePeerVote, labelFor } from "./coach";
 
 type PlayerRow = {
@@ -136,6 +141,44 @@ function pickUserIndex(teams: { name: string }[], myTeamName: string | null): nu
   return 0;
 }
 
+function mapFreeAgentProposal(r: {
+  id: string;
+  createdAt: Date;
+  status: string;
+  teamName: string;
+  giveName: string;
+  giveRole: string;
+  giveQuota: number;
+  giveFm: number;
+  faName: string;
+  faRole: string;
+  faClub: string;
+  faQuota: number;
+  faFm: number;
+  rationale: string;
+  agentComment: string;
+  forUser: boolean;
+}): FreeAgentProposalItem {
+  return {
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    status: r.status as FreeAgentProposalItem["status"],
+    teamName: r.teamName,
+    giveName: r.giveName,
+    giveRole: r.giveRole as Role,
+    giveQuota: r.giveQuota,
+    giveFm: r.giveFm,
+    faName: r.faName,
+    faRole: r.faRole as Role,
+    faClub: r.faClub,
+    faQuota: r.faQuota,
+    faFm: r.faFm,
+    rationale: r.rationale,
+    agentComment: r.agentComment,
+    forUser: r.forUser,
+  };
+}
+
 export class PrismaLeagueRepository implements LeagueRepository {
   async getTeams(): Promise<LeagueTeam[]> {
     const teams = await prisma.team.findMany({
@@ -224,6 +267,17 @@ export class PrismaLeagueRepository implements LeagueRepository {
   async getPlayerById(id: string) {
     const p = await prisma.player.findUnique({ where: { id }, include: { team: true } });
     if (!p) return null;
+    // Svincolato: nessuna squadra proprietaria.
+    if (!p.team) {
+      const identity = teamIdentity({ name: "Svincolato" });
+      return {
+        player: mapPlayer(p, undefined),
+        teamName: "Svincolato",
+        teamSlug: "",
+        isUser: false,
+        owner: identity,
+      };
+    }
     const identity = teamIdentity(p.team);
     return {
       player: mapPlayer(p, identity),
@@ -254,6 +308,167 @@ export class PrismaLeagueRepository implements LeagueRepository {
 
   async setUserTeamColors(color1: string | null, color2: string | null): Promise<void> {
     await prisma.team.updateMany({ where: { isUser: true }, data: { color1, color2 } });
+  }
+
+  async getConfig(): Promise<LeagueConfig> {
+    const c = await prisma.leagueConfig.upsert({
+      where: { id: "league" },
+      create: { id: "league" },
+      update: {},
+    });
+    return {
+      gazzettaName: c.gazzettaName,
+      freeAgentEnabled: c.freeAgentEnabled,
+      freeAgentMaxPerWeek: c.freeAgentMaxPerWeek,
+    };
+  }
+
+  async updateConfig(patch: Partial<LeagueConfig>): Promise<LeagueConfig> {
+    const data: { gazzettaName?: string; freeAgentEnabled?: boolean; freeAgentMaxPerWeek?: number } = {};
+    if (patch.gazzettaName !== undefined) data.gazzettaName = patch.gazzettaName;
+    if (patch.freeAgentEnabled !== undefined) data.freeAgentEnabled = patch.freeAgentEnabled;
+    if (patch.freeAgentMaxPerWeek !== undefined) data.freeAgentMaxPerWeek = patch.freeAgentMaxPerWeek;
+    const c = await prisma.leagueConfig.upsert({
+      where: { id: "league" },
+      create: { id: "league", ...data },
+      update: data,
+    });
+    return {
+      gazzettaName: c.gazzettaName,
+      freeAgentEnabled: c.freeAgentEnabled,
+      freeAgentMaxPerWeek: c.freeAgentMaxPerWeek,
+    };
+  }
+
+  async getFreeAgents(): Promise<LeaguePlayer[]> {
+    const roleOrder: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 };
+    const rows = await prisma.player.findMany({ where: { teamId: null } });
+    return rows
+      .map((p) => mapPlayer(p))
+      .sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9) || b.fm - a.fm);
+  }
+
+  async addFreeAgent(input: FreeAgentInput): Promise<void> {
+    await prisma.player.create({
+      data: {
+        name: input.name,
+        role: input.role,
+        club: input.club,
+        quota: input.quota,
+        fm: input.fm,
+        teamId: null,
+      },
+    });
+  }
+
+  async addFreeAgentsBulk(inputs: FreeAgentInput[]): Promise<void> {
+    if (!inputs.length) return;
+    await prisma.player.createMany({
+      data: inputs.map((i) => ({
+        name: i.name,
+        role: i.role,
+        club: i.club,
+        quota: i.quota,
+        fm: i.fm,
+        teamId: null,
+      })),
+    });
+  }
+
+  async updateFreeAgent(id: string, patch: Partial<FreeAgentInput>): Promise<void> {
+    await prisma.player.updateMany({ where: { id, teamId: null }, data: patch });
+  }
+
+  async removeFreeAgent(id: string): Promise<void> {
+    await prisma.player.deleteMany({ where: { id, teamId: null } });
+  }
+
+  async addNewsArticle(article: ArticleInput): Promise<void> {
+    await prisma.article.create({
+      data: {
+        editionId: null,
+        kicker: article.kicker,
+        title: article.title,
+        body: article.body,
+        category: article.category,
+        isLead: false,
+        order: 0,
+      },
+    });
+  }
+
+  async getRecentNews(limit = 12): Promise<Article[]> {
+    const rows = await prisma.article.findMany({
+      where: { editionId: null },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    return rows.map((a) => ({
+      id: a.id,
+      kicker: a.kicker,
+      title: a.title,
+      body: a.body,
+      category: a.category,
+      isLead: a.isLead,
+      order: a.order,
+      createdAt: a.createdAt.toISOString(),
+    }));
+  }
+
+  async createFreeAgentProposals(proposals: NewFreeAgentProposal[]): Promise<void> {
+    if (!proposals.length) return;
+    await prisma.freeAgentProposal.createMany({
+      data: proposals.map((p) => ({
+        teamName: p.teamName,
+        giveName: p.giveName,
+        giveRole: p.giveRole,
+        giveQuota: p.giveQuota,
+        giveFm: p.giveFm,
+        faName: p.faName,
+        faRole: p.faRole,
+        faClub: p.faClub,
+        faQuota: p.faQuota,
+        faFm: p.faFm,
+        rationale: p.rationale,
+        agentComment: p.agentComment,
+        forUser: p.forUser,
+        status: p.status ?? "pending",
+      })),
+    });
+  }
+
+  async getFreeAgentProposals(): Promise<FreeAgentProposalItem[]> {
+    const rows = await prisma.freeAgentProposal.findMany({ orderBy: { createdAt: "desc" } });
+    return rows.map(mapFreeAgentProposal);
+  }
+
+  async getPendingFreeAgentProposals(forUserOnly: boolean): Promise<FreeAgentProposalItem[]> {
+    const rows = await prisma.freeAgentProposal.findMany({
+      where: { status: "pending", ...(forUserOnly ? { forUser: true } : {}) },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(mapFreeAgentProposal);
+  }
+
+  async getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null> {
+    const r = await prisma.freeAgentProposal.findUnique({ where: { id } });
+    return r ? mapFreeAgentProposal(r) : null;
+  }
+
+  async setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void> {
+    await prisma.freeAgentProposal.updateMany({ where: { id }, data: { status } });
+  }
+
+  async executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const team = await tx.team.findFirst({ where: { name: teamName } });
+      if (!team) throw new Error("Squadra non trovata");
+      const give = await tx.player.findFirst({ where: { name: giveName, teamId: team.id } });
+      const fa = await tx.player.findFirst({ where: { name: faName, teamId: null } });
+      if (!give || !fa) throw new Error("Scambio con svincolato non più valido");
+      await tx.player.update({ where: { id: give.id }, data: { teamId: null } });
+      await tx.player.update({ where: { id: fa.id }, data: { teamId: team.id } });
+    });
   }
 
   async getPerformances(giornataNumber: number): Promise<PerformanceInput[]> {
@@ -557,6 +772,7 @@ export class PrismaLeagueRepository implements LeagueRepository {
         await tx.trade.deleteMany();
         await tx.result.deleteMany();
         await tx.giornata.deleteMany();
+        await tx.freeAgentProposal.deleteMany();
         await tx.player.deleteMany();
         await tx.team.deleteMany();
 
@@ -700,6 +916,7 @@ export class PrismaLeagueRepository implements LeagueRepository {
         await tx.trade.deleteMany();
         await tx.result.deleteMany();
         await tx.giornata.deleteMany();
+        await tx.freeAgentProposal.deleteMany();
         await tx.player.deleteMany();
         await tx.team.deleteMany();
 
@@ -730,6 +947,17 @@ export class PrismaLeagueRepository implements LeagueRepository {
           },
         });
         await tx.flashNews.create({ data: { text: DEMO_FLASH, kind: "generic" } });
+        await tx.player.createMany({
+          data: DEMO_FREE_AGENTS.map((p) => ({
+            name: p.name,
+            role: p.role,
+            club: p.club,
+            quota: p.quota,
+            fm: p.fm,
+            teamId: null,
+          })),
+        });
+        await tx.leagueConfig.upsert({ where: { id: "league" }, create: { id: "league" }, update: {} });
       },
       { timeout: 30000 },
     );

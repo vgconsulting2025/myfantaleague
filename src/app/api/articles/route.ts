@@ -14,10 +14,11 @@ export async function POST() {
   const repo = getLeagueRepository();
 
   try {
-    const [standingsArr, latest, recentTrades] = await Promise.all([
+    const [standingsArr, latest, recentTrades, config] = await Promise.all([
       repo.getStandings(),
       repo.getLatestGiornata(),
       repo.getTrades(),
+      repo.getConfig(),
     ]);
     const coachRatings = latest ? await repo.getCoachRatingsForGiornata(latest.number) : [];
 
@@ -68,7 +69,7 @@ export async function POST() {
           .join("\n")
       : "Nessun voto agli allenatori.";
 
-    const prompt = `Sei il redattore capo della gazzetta di una lega di fantacalcio italiana chiamata "Lega Bar Centrale". Scrivi con tono da quotidiano sportivo italiano: ironico, epico, con soprannomi e drammi da bar.
+    const prompt = `Sei il redattore capo di "${config.gazzettaName}", la gazzetta di una lega di fantacalcio italiana. Scrivi con tono da quotidiano sportivo italiano: ironico, epico, con soprannomi e drammi da bar.
 
 CLASSIFICA:
 ${standings}

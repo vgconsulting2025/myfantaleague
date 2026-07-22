@@ -8,11 +8,12 @@ import type {
   ImportResultRow,
   RosterPreview,
 } from "@/lib/league/import/types";
-import type { LeagueTeam, Role } from "@/lib/league/types";
+import type { LeagueConfig, LeaguePlayer, LeagueTeam, Role } from "@/lib/league/types";
 import { ErrorBox, SectionTitle, Spinner } from "./ui";
 import TeamIdentityEditor from "./TeamIdentityEditor";
 
 const ROLES: (Role | "?")[] = ["P", "D", "C", "A", "?"];
+const FA_ROLES: Role[] = ["P", "D", "C", "A"];
 
 /* ---------------- Sorgente dati (file o testo incollato) ---------------- */
 
@@ -480,9 +481,349 @@ function CalendarImportPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
+/* ---------------- Config Gazzetta + regole Agente svincolati ---------------- */
+
+function GazzettaConfigPanel({
+  config,
+  onDone,
+}: {
+  config: LeagueConfig;
+  onDone: (msg: string) => void;
+}) {
+  const [name, setName] = useState(config.gazzettaName);
+  const [enabled, setEnabled] = useState(config.freeAgentEnabled);
+  const [max, setMax] = useState(String(config.freeAgentMaxPerWeek));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gazzettaName: name,
+          freeAgentEnabled: enabled,
+          freeAgentMaxPerWeek: Number(max),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito.");
+      onDone("Configurazione salvata.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Salvataggio non riuscito.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="font-display text-xl font-semibold text-slate-900">Gazzetta &amp; Agente svincolati</h3>
+      <p className="mb-4 mt-1 text-sm text-slate-500">
+        Personalizza il nome della testata e le regole con cui l&apos;Agente propone in autonomia
+        scambi con gli svincolati (quando simuli una giornata).
+      </p>
+
+      {error && <ErrorBox message={error} onRetry={undefined} />}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Nome della Gazzetta
+          </span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={40}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-verde-500 focus:outline-none"
+          />
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Max proposte svincolati / giornata
+          </span>
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={max}
+            onChange={(e) => setMax(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-verde-500 focus:outline-none"
+          />
+        </label>
+      </div>
+
+      <label className="mt-4 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-verde focus:ring-verde"
+        />
+        <span className="font-medium text-slate-700">
+          Abilita le proposte automatiche dell&apos;Agente sugli svincolati
+        </span>
+      </label>
+
+      <div className="mt-5 flex justify-end">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-xl bg-verde px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-verde-700 disabled:opacity-60"
+        >
+          {saving ? "Salvo..." : "Salva configurazione"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Gestione svincolati (CRUD manuale) ---------------- */
+
+function FaRow({
+  fa,
+  busy,
+  onSave,
+  onRemove,
+}: {
+  fa: LeaguePlayer;
+  busy: boolean;
+  onSave: (patch: { name: string; role: Role; club: string; quota: number; fm: number }) => void;
+  onRemove: () => void;
+}) {
+  const [name, setName] = useState(fa.name);
+  const [role, setRole] = useState<Role>(fa.role);
+  const [club, setClub] = useState(fa.club);
+  const [quota, setQuota] = useState(String(fa.quota));
+  const [fm, setFm] = useState(String(fa.fm));
+
+  const dirty =
+    name !== fa.name ||
+    role !== fa.role ||
+    club !== fa.club ||
+    Number(quota) !== fa.quota ||
+    Number(fm) !== fa.fm;
+
+  const inputCls =
+    "w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none";
+
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="px-2 py-1">
+        <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+      </td>
+      <td className="px-2 py-1">
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as Role)}
+          className="rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none"
+        >
+          {FA_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="px-2 py-1">
+        <input value={club} onChange={(e) => setClub(e.target.value)} className={inputCls} />
+      </td>
+      <td className="w-20 px-2 py-1">
+        <input value={quota} onChange={(e) => setQuota(e.target.value)} className="w-16 rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none" />
+      </td>
+      <td className="w-20 px-2 py-1">
+        <input value={fm} onChange={(e) => setFm(e.target.value)} className="w-16 rounded border border-slate-200 px-2 py-1 text-sm focus:border-verde-500 focus:outline-none" />
+      </td>
+      <td className="whitespace-nowrap px-2 py-1 text-right">
+        {dirty && (
+          <button
+            onClick={() => onSave({ name, role, club, quota: Number(quota), fm: Number(fm) })}
+            disabled={busy}
+            className="mr-3 text-xs font-semibold text-verde hover:text-verde-700 disabled:opacity-50"
+          >
+            salva
+          </button>
+        )}
+        <button
+          onClick={onRemove}
+          disabled={busy}
+          className="text-xs font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+        >
+          rimuovi
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function FreeAgentsPanel({
+  freeAgents,
+  onDone,
+}: {
+  freeAgents: LeaguePlayer[];
+  onDone: (msg: string) => void;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<Role>("A");
+  const [club, setClub] = useState("");
+  const [quota, setQuota] = useState("1");
+  const [fm, setFm] = useState("6");
+  const [adding, setAdding] = useState(false);
+
+  async function call(body: Record<string, unknown>, id: string): Promise<boolean> {
+    setError(null);
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/free-agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Operazione non riuscita.");
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operazione non riuscita.");
+      return false;
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function add() {
+    setAdding(true);
+    const ok = await call(
+      { action: "add", name, role, club, quota: Number(quota), fm: Number(fm) },
+      "add",
+    );
+    setAdding(false);
+    if (ok) {
+      setName("");
+      setClub("");
+      setQuota("1");
+      setFm("6");
+      onDone("Svincolato aggiunto.");
+    }
+  }
+
+  const inputCls =
+    "rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-verde-500 focus:outline-none";
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="font-display text-xl font-semibold text-slate-900">
+        Svincolati <span className="text-sm font-normal text-slate-400">({freeAgents.length})</span>
+      </h3>
+      <p className="mb-4 mt-1 text-sm text-slate-500">
+        I giocatori senza fanta-squadra. All&apos;import, chi non è assegnato a una squadra diventa
+        automaticamente svincolato. Qui puoi aggiungerli, modificarli o rimuoverli a mano.
+      </p>
+
+      {error && <ErrorBox message={error} onRetry={undefined} />}
+
+      {/* Aggiungi svincolato */}
+      <div className="mb-5 flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+        <input
+          placeholder="Nome"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={`${inputCls} flex-1 min-w-[8rem]`}
+        />
+        <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputCls}>
+          {FA_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <input
+          placeholder="Club"
+          value={club}
+          onChange={(e) => setClub(e.target.value)}
+          className={`${inputCls} w-32`}
+        />
+        <input
+          placeholder="Quota"
+          type="number"
+          value={quota}
+          onChange={(e) => setQuota(e.target.value)}
+          className={`${inputCls} w-20`}
+        />
+        <input
+          placeholder="FM"
+          type="number"
+          value={fm}
+          onChange={(e) => setFm(e.target.value)}
+          className={`${inputCls} w-20`}
+        />
+        <button
+          onClick={add}
+          disabled={adding}
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+        >
+          {adding ? "..." : "Aggiungi"}
+        </button>
+      </div>
+
+      {/* Elenco */}
+      {freeAgents.length === 0 ? (
+        <p className="text-sm text-slate-400">Nessuno svincolato al momento.</p>
+      ) : (
+        <div className="max-h-[26rem] overflow-auto rounded-xl border border-slate-200">
+          <table className="w-full min-w-[600px] border-collapse text-sm">
+            <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-2 py-2">Giocatore</th>
+                <th className="px-2 py-2">Ruolo</th>
+                <th className="px-2 py-2">Club</th>
+                <th className="px-2 py-2">Quota</th>
+                <th className="px-2 py-2">FM</th>
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {freeAgents.map((f) => (
+                <FaRow
+                  key={f.id}
+                  fa={f}
+                  busy={busyId === f.id}
+                  onSave={async (patch) => {
+                    if (await call({ action: "update", id: f.id, ...patch }, f.id)) {
+                      onDone("Svincolato aggiornato.");
+                    }
+                  }}
+                  onRemove={async () => {
+                    if (await call({ action: "remove", id: f.id }, f.id)) {
+                      onDone("Svincolato rimosso.");
+                    }
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- Sezione principale ---------------- */
 
-export default function Configura({ userTeam }: { userTeam: LeagueTeam }) {
+export default function Configura({
+  userTeam,
+  config,
+  freeAgents,
+}: {
+  userTeam: LeagueTeam;
+  config: LeagueConfig;
+  freeAgents: LeaguePlayer[];
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -537,6 +878,11 @@ export default function Configura({ userTeam }: { userTeam: LeagueTeam }) {
 
       <div className="mb-6">
         <TeamIdentityEditor team={userTeam} />
+      </div>
+
+      <div className="mb-6 space-y-6">
+        <GazzettaConfigPanel config={config} onDone={refresh} />
+        <FreeAgentsPanel freeAgents={freeAgents} onDone={refresh} />
       </div>
 
       <div className="space-y-6">

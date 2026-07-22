@@ -198,3 +198,15 @@ export const DEMO_GIORNATA: { number: number; results: DemoResult[] } = {
 
 export const DEMO_FLASH =
   "Mercato aperto: l'Agente è già al lavoro sulle rose della Lega Bar Centrale.";
+
+// Giocatori svincolati (non assegnati a nessuna squadra).
+export const DEMO_FREE_AGENTS: DemoPlayer[] = [
+  { name: "Gollini", role: "P", club: "Roma", quota: 8, fm: 5.9 },
+  { name: "Kayode", role: "D", club: "Fiorentina", quota: 9, fm: 6.0 },
+  { name: "Zortea", role: "D", club: "Cagliari", quota: 9, fm: 6.1 },
+  { name: "Sohm", role: "C", club: "Parma", quota: 12, fm: 6.2 },
+  { name: "Colpani", role: "C", club: "Monza", quota: 16, fm: 6.4 },
+  { name: "Vranckx", role: "C", club: "Milan", quota: 10, fm: 6.0 },
+  { name: "Pinamonti", role: "A", club: "Genoa", quota: 16, fm: 6.4 },
+  { name: "Colombo", role: "A", club: "Empoli", quota: 12, fm: 6.1 },
+];

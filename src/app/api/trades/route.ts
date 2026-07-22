@@ -3,7 +3,9 @@ import { getLeagueRepository } from "@/lib/league/repository";
 import { askClaude, hasAnthropicKey, parseAiJson } from "@/lib/anthropic";
 import { validateProposals } from "@/lib/league/trades";
 import { generateDemoProposals } from "@/lib/league/demo-content";
-import type { LeagueTeam, TradeProposal } from "@/lib/league/types";
+import { announceSquadTrade } from "@/lib/league/news";
+import type { EnrichedProposal, LeagueTeam, TradeProposal } from "@/lib/league/types";
+import type { LeagueRepository } from "@/lib/league/repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +14,20 @@ function rosterText(team: LeagueTeam): string {
   return team.players
     .map((p) => `${p.name} (${p.role}, ${p.club}, quota ${p.quota}, fantamedia ${p.fm})`)
     .join("; ");
+}
+
+// Crea subito un articolo della Gazzetta che annuncia la tornata di proposte.
+async function announce(
+  repo: LeagueRepository,
+  proposals: EnrichedProposal[],
+  userTeamName: string,
+) {
+  await repo.addNewsArticle(
+    announceSquadTrade(
+      proposals.map((p) => ({ give: p.give, receive: p.receive, otherTeam: p.otherTeam })),
+      userTeamName,
+    ),
+  );
 }
 
 // POST /api/trades — "Chiama l'Agente"
@@ -31,6 +47,7 @@ export async function POST() {
       const demo = generateDemoProposals(userTeam, others);
       const proposals = validateProposals(demo, userTeam, others);
       if (proposals.length === 0) throw new Error("Nessuna proposta generata");
+      await announce(repo, proposals, userTeam.name);
       return NextResponse.json({ proposals, demo: true });
     }
 
@@ -55,6 +72,7 @@ Proponi 3 scambi (1 giocatore per 1 giocatore, stesso ruolo o valore simile) che
     const proposals = validateProposals(parsed as TradeProposal[], userTeam, others);
     if (proposals.length === 0) throw new Error("Nessuna proposta valida");
 
+    await announce(repo, proposals, userTeam.name);
     return NextResponse.json({ proposals, demo: false });
   } catch (err) {
     console.error("[/api/trades]", err);

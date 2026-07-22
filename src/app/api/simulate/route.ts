@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { getLeagueRepository } from "@/lib/league/repository";
-import type { PerformanceInput, CoachRatingInput } from "@/lib/league/repository";
-import type { LeagueTeam, MatchResult } from "@/lib/league/types";
+import type {
+  PerformanceInput,
+  CoachRatingInput,
+  NewFreeAgentProposal,
+  LeagueRepository,
+} from "@/lib/league/repository";
+import type { ArticleInput, LeagueTeam, MatchResult } from "@/lib/league/types";
 import { hasAnthropicKey, askClaude, parseAiJson } from "@/lib/anthropic";
 import {
   generateDemoCoachRatings,
   generateSimulatedPeerVotes,
 } from "@/lib/league/demo-content";
+import {
+  pickFreeAgentMatch,
+  freeAgentRationale,
+  freeAgentComment,
+} from "@/lib/league/freeagents";
+import { announceFreeAgent, outcomeFreeAgent } from "@/lib/league/news";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,6 +127,82 @@ Rispondi SOLO con JSON valido, nessun altro testo:
   return out;
 }
 
+// Canale svincolati: a ogni giornata l'Agente propone in autonomia, con cadenza
+// casuale (0..maxPerWeek), scambi 1-per-1 tra un giocatore di una squadra e uno
+// svincolato compatibile. Per le squadre AI decide da sé (ed esegue lo scambio);
+// per la squadra dell'utente lascia una proposta in sospeso (badge sul Mercato).
+// Ogni proposta genera un articolo di annuncio; ogni esito AI un secondo articolo.
+async function generateFreeAgentProposals(
+  repo: LeagueRepository,
+  teams: LeagueTeam[],
+): Promise<void> {
+  const config = await repo.getConfig();
+  if (!config.freeAgentEnabled) return;
+
+  const freeAgents = await repo.getFreeAgents();
+  if (freeAgents.length === 0) return;
+
+  const count = Math.floor(Math.random() * (config.freeAgentMaxPerWeek + 1));
+  if (count === 0) return;
+
+  const usedFa = new Set<string>();
+  const usedGive = new Set<string>();
+  const proposals: NewFreeAgentProposal[] = [];
+  const articles: ArticleInput[] = [];
+
+  for (let k = 0; k < count; k++) {
+    const team = teams[Math.floor(Math.random() * teams.length)];
+    const availableFa = freeAgents.filter((fa) => !usedFa.has(fa.name));
+    const match = pickFreeAgentMatch(team, availableFa);
+    if (!match || usedGive.has(match.give.name)) continue;
+
+    usedFa.add(match.fa.name);
+    usedGive.add(match.give.name);
+
+    const base = {
+      teamName: match.team.name,
+      giveName: match.give.name,
+      giveRole: match.give.role,
+      giveQuota: match.give.quota,
+      giveFm: match.give.fm,
+      faName: match.fa.name,
+      faRole: match.fa.role,
+      faClub: match.fa.club,
+      faQuota: match.fa.quota,
+      faFm: match.fa.fm,
+      rationale: freeAgentRationale(match),
+      agentComment: freeAgentComment(),
+    };
+
+    // Articolo di annuncio (goliardico) per ogni proposta.
+    articles.push(
+      announceFreeAgent(match.team.name, match.give.name, match.fa.name, match.fa.club),
+    );
+
+    if (match.team.isUser) {
+      // Solo il presidente umano decide: proposta in sospeso.
+      proposals.push({ ...base, forUser: true, status: "pending" });
+    } else {
+      // Squadra AI: decide da sé; se accetta, esegue lo scambio.
+      const accepted = Math.random() < 0.5;
+      if (accepted) {
+        try {
+          await repo.executeFreeAgentSwap(match.team.name, match.give.name, match.fa.name);
+        } catch {
+          // Rosa cambiata nel frattempo: ignora.
+        }
+      }
+      proposals.push({ ...base, forUser: false, status: accepted ? "accepted" : "rejected" });
+      articles.push(
+        outcomeFreeAgent(match.team.name, match.give.name, match.fa.name, accepted),
+      );
+    }
+  }
+
+  if (proposals.length) await repo.createFreeAgentProposals(proposals);
+  for (const a of articles) await repo.addNewsArticle(a);
+}
+
 // POST /api/simulate — "Simula giornata"
 // Genera voti dei giocatori + formazioni, risultati e classifica; poi i voti AI
 // agli allenatori (o da template in demo) e alcuni voti tra presidenti.
@@ -185,6 +272,13 @@ export async function POST() {
       teams.map((t) => ({ name: t.name, president: t.president, isUser: t.isUser })),
     );
     await repo.savePeerVotes(giornata.number, peerVotes);
+
+    // Canale svincolati gestito dall'Agente (non blocca l'esito della giornata).
+    try {
+      await generateFreeAgentProposals(repo, teams);
+    } catch (e) {
+      console.error("[/api/simulate] svincolati", e);
+    }
 
     return NextResponse.json({ giornata });
   } catch (err) {

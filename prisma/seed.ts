@@ -6,7 +6,12 @@
 // Esegui con:  npm run seed   (oppure  prisma db seed)
 
 import { PrismaClient } from "@prisma/client";
-import { DEMO_TEAMS, DEMO_GIORNATA, DEMO_FLASH } from "../src/lib/league/demo-league";
+import {
+  DEMO_TEAMS,
+  DEMO_GIORNATA,
+  DEMO_FLASH,
+  DEMO_FREE_AGENTS,
+} from "../src/lib/league/demo-league";
 
 const prisma = new PrismaClient();
 
@@ -16,10 +21,13 @@ async function main() {
   await prisma.article.deleteMany();
   await prisma.edition.deleteMany();
   await prisma.trade.deleteMany();
+  await prisma.freeAgentProposal.deleteMany();
   await prisma.result.deleteMany();
   await prisma.giornata.deleteMany();
   await prisma.player.deleteMany();
   await prisma.team.deleteMany();
+
+  await prisma.leagueConfig.upsert({ where: { id: "league" }, create: { id: "league" }, update: {} });
 
   for (const t of DEMO_TEAMS) {
     await prisma.team.create({
@@ -51,9 +59,24 @@ async function main() {
 
   await prisma.flashNews.create({ data: { text: DEMO_FLASH, kind: "generic" } });
 
+  // Svincolati (teamId null).
+  await prisma.player.createMany({
+    data: DEMO_FREE_AGENTS.map((p) => ({
+      name: p.name,
+      role: p.role,
+      club: p.club,
+      quota: p.quota,
+      fm: p.fm,
+      teamId: null,
+    })),
+  });
+
   const teamCount = await prisma.team.count();
   const playerCount = await prisma.player.count();
-  console.log(`Seed completato: ${teamCount} squadre, ${playerCount} giocatori, 1 giornata.`);
+  const freeAgents = await prisma.player.count({ where: { teamId: null } });
+  console.log(
+    `Seed completato: ${teamCount} squadre, ${playerCount} giocatori (${freeAgents} svincolati), 1 giornata.`,
+  );
 }
 
 main()

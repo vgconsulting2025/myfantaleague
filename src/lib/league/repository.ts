@@ -7,11 +7,15 @@
 // LeagueRepository, senza toccare UI o route.
 
 import type {
+  Article,
   ArticleInput,
   CoachRatingItem,
   Edition,
   FlashItem,
+  FreeAgentProposalItem,
   Giornata,
+  LeagueConfig,
+  LeaguePlayer,
   LeagueTeam,
   MatchResult,
   PeerVoteItem,
@@ -22,6 +26,31 @@ import type {
   TradeStatus,
 } from "./types";
 import type { ImportResultRow } from "./import/types";
+
+export interface FreeAgentInput {
+  name: string;
+  role: Role;
+  club: string;
+  quota: number;
+  fm: number;
+}
+
+export interface NewFreeAgentProposal {
+  teamName: string;
+  giveName: string;
+  giveRole: Role;
+  giveQuota: number;
+  giveFm: number;
+  faName: string;
+  faRole: Role;
+  faClub: string;
+  faQuota: number;
+  faFm: number;
+  rationale: string;
+  agentComment: string;
+  forUser: boolean;
+  status?: "pending" | "accepted" | "rejected";
+}
 
 export interface PerformanceInput {
   teamName: string;
@@ -101,6 +130,29 @@ export interface LeagueRepository {
     pointsByTeamName: Record<string, number>,
     performances?: PerformanceInput[],
   ): Promise<Giornata>;
+  // Configurazione lega
+  getConfig(): Promise<LeagueConfig>;
+  updateConfig(patch: Partial<LeagueConfig>): Promise<LeagueConfig>;
+
+  // Svincolati
+  getFreeAgents(): Promise<LeaguePlayer[]>;
+  addFreeAgent(input: FreeAgentInput): Promise<void>;
+  addFreeAgentsBulk(inputs: FreeAgentInput[]): Promise<void>;
+  updateFreeAgent(id: string, patch: Partial<FreeAgentInput>): Promise<void>;
+  removeFreeAgent(id: string): Promise<void>;
+
+  // Notizie singole (non parte di un'edizione)
+  addNewsArticle(article: ArticleInput): Promise<void>;
+  getRecentNews(limit?: number): Promise<Article[]>;
+
+  // Proposte svincolati
+  createFreeAgentProposals(proposals: NewFreeAgentProposal[]): Promise<void>;
+  getFreeAgentProposals(): Promise<FreeAgentProposalItem[]>;
+  getPendingFreeAgentProposals(forUserOnly: boolean): Promise<FreeAgentProposalItem[]>;
+  getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null>;
+  setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void>;
+  executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void>;
+
   saveCoachRatings(giornataNumber: number, ratings: CoachRatingInput[]): Promise<void>;
   savePeerVotes(giornataNumber: number, votes: PeerVoteInput[]): Promise<void>;
   addPeerVote(

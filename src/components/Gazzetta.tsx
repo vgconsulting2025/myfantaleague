@@ -2,16 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Edition, FlashItem } from "@/lib/league/types";
+import type { Article, Edition, FlashItem } from "@/lib/league/types";
 import { CategoryPill, ErrorBox, SectionTitle, Spinner } from "./ui";
 import { formatDate, timeAgo } from "./format";
 
 export default function Gazzetta({
   editions,
   flash,
+  gazzettaName,
+  recentNews,
 }: {
   editions: Edition[];
   flash: FlashItem[];
+  gazzettaName: string;
+  recentNews: Article[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -69,9 +73,44 @@ export default function Gazzetta({
         </div>
       )}
 
+      {/* Dalla redazione — notizie singole (mercato e svincolati), goliardiche */}
+      {recentNews.length > 0 && (
+        <div className="mb-8">
+          <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
+            Dalla redazione
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {recentNews.slice(0, 6).map((n) => (
+              <article
+                key={n.id}
+                className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <CategoryPill category={n.category} />
+                  {n.createdAt && (
+                    <span className="text-xs text-slate-400">{timeAgo(n.createdAt)}</span>
+                  )}
+                </div>
+                {n.kicker && (
+                  <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-oro-700">
+                    {n.kicker}
+                  </div>
+                )}
+                <h4 className="mt-1 font-display text-lg font-semibold leading-snug text-slate-900">
+                  {n.title}
+                </h4>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 line-clamp-4">
+                  {n.body}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+
       <SectionTitle
         overline={selected ? `Edizione · ${formatDate(selected.createdAt)}` : "Area notizie"}
-        title="La Gazzetta"
+        title={gazzettaName}
         action={
           <button
             onClick={genera}

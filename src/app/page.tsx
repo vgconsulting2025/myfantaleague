@@ -23,6 +23,10 @@ export default async function Home({
     presidentStandings,
     peerVotes,
     coachRatings,
+    config,
+    recentNews,
+    freeAgents,
+    freeAgentProposals,
   ] = await Promise.all([
     repo.getUserTeam(),
     repo.getStandings(),
@@ -33,6 +37,10 @@ export default async function Home({
     repo.getPresidentStandings(),
     repo.getPeerVotes(),
     repo.getCoachRatings(12),
+    repo.getConfig(),
+    repo.getRecentNews(12),
+    repo.getFreeAgents(),
+    repo.getFreeAgentProposals(),
   ]);
 
   // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
@@ -49,6 +57,10 @@ export default async function Home({
       presidentStandings={presidentStandings}
       peerVotes={peerVotes}
       coachRatings={coachRatings}
+      config={config}
+      recentNews={recentNews}
+      freeAgents={freeAgents}
+      freeAgentProposals={freeAgentProposals}
       demoMode={demoMode}
       initialTab={initialTab}
     />

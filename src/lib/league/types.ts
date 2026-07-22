@@ -117,6 +117,34 @@ export interface Article extends ArticleInput {
   id: string;
   isLead: boolean;
   order: number;
+  createdAt?: string;
+}
+
+export interface LeagueConfig {
+  gazzettaName: string;
+  freeAgentEnabled: boolean;
+  freeAgentMaxPerWeek: number;
+}
+
+export type FreeAgentStatus = "pending" | "accepted" | "rejected";
+
+export interface FreeAgentProposalItem {
+  id: string;
+  createdAt: string;
+  status: FreeAgentStatus;
+  teamName: string;
+  giveName: string;
+  giveRole: Role;
+  giveQuota: number;
+  giveFm: number;
+  faName: string;
+  faRole: Role;
+  faClub: string;
+  faQuota: number;
+  faFm: number;
+  rationale: string;
+  agentComment: string;
+  forUser: boolean;
 }
 
 export interface Edition {

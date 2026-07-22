@@ -36,8 +36,8 @@ model Player {
   fm       Float
   imageUrl String? // immagine personalizzata caricata dall'utente (file statico)
   number   Int? // numero di maglia (editabile; default automatico 1-99)
-  team     Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId   String
+  team     Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId   String? // null = giocatore svincolato
 
   @@index([teamId])
 }
@@ -120,17 +120,50 @@ model Edition {
 }
 
 model Article {
-  id        String  @id @default(cuid())
-  edition   Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
-  editionId String
+  id        String   @id @default(cuid())
+  edition   Edition? @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  editionId String? // null = notizia singola (non parte di un'edizione)
   kicker    String
   title     String
   body      String
   category  String
-  isLead    Boolean @default(false)
-  order     Int     @default(0)
+  isLead    Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 
   @@index([editionId])
+  @@index([createdAt])
+}
+
+// Configurazione della lega (singleton, id = "league").
+model LeagueConfig {
+  id                  String  @id @default("league")
+  gazzettaName        String  @default("MyFantaGazzetta")
+  freeAgentEnabled    Boolean @default(true)
+  freeAgentMaxPerWeek Int     @default(2)
+}
+
+// Proposta di scambio 1-per-1 tra un giocatore di una squadra e uno svincolato,
+// generata automaticamente dall'Agente.
+model FreeAgentProposal {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  status       String   @default("pending") // pending | accepted | rejected
+  teamName     String
+  giveName     String
+  giveRole     String
+  giveQuota    Int
+  giveFm       Float
+  faName       String
+  faRole       String
+  faClub       String
+  faQuota      Int
+  faFm         Float
+  rationale    String
+  agentComment String
+  forUser      Boolean  @default(false)
+
+  @@index([status])
 }
 
 model Trade {

@@ -3,11 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
+  Article,
   CoachRatingItem,
   Edition,
   EnrichedProposal,
   FlashItem,
+  FreeAgentProposalItem,
   Giornata,
+  LeagueConfig,
+  LeaguePlayer,
   LeagueTeam,
   PeerVoteItem,
   PresidentStanding,
@@ -42,6 +46,10 @@ interface AppShellProps {
   presidentStandings: PresidentStanding[];
   peerVotes: PeerVoteItem[];
   coachRatings: CoachRatingItem[];
+  config: LeagueConfig;
+  recentNews: Article[];
+  freeAgents: LeaguePlayer[];
+  freeAgentProposals: FreeAgentProposalItem[];
   demoMode: boolean;
   initialTab?: string;
 }
@@ -56,6 +64,10 @@ export default function AppShell({
   presidentStandings,
   peerVotes,
   coachRatings,
+  config,
+  recentNews,
+  freeAgents,
+  freeAgentProposals,
   demoMode,
   initialTab,
 }: AppShellProps) {
@@ -67,7 +79,13 @@ export default function AppShell({
   const [proposals, setProposals] = useState<EnrichedProposal[]>([]);
   const [simulating, setSimulating] = useState(false);
 
-  const pendingCount = proposals.filter((p) => p.status === "pending").length;
+  // Badge sul Mercato: proposte squadra-squadra in sospeso (stato locale) +
+  // proposte dagli svincolati rivolte all'utente e ancora da decidere.
+  const faPendingCount = freeAgentProposals.filter(
+    (p) => p.forUser && p.status === "pending",
+  ).length;
+  const pendingCount =
+    proposals.filter((p) => p.status === "pending").length + faPendingCount;
 
   async function simula() {
     setSimulating(true);
@@ -161,9 +179,21 @@ export default function AppShell({
         </div>
 
         <div className="mx-auto max-w-6xl px-4 py-6">
-          {tab === "gazzetta" && <Gazzetta editions={editions} flash={flash} />}
+          {tab === "gazzetta" && (
+            <Gazzetta
+              editions={editions}
+              flash={flash}
+              gazzettaName={config.gazzettaName}
+              recentNews={recentNews}
+            />
+          )}
           {tab === "mercato" && (
-            <Mercato trades={trades} proposals={proposals} setProposals={setProposals} />
+            <Mercato
+              trades={trades}
+              proposals={proposals}
+              setProposals={setProposals}
+              freeAgentProposals={freeAgentProposals}
+            />
           )}
           {tab === "squadra" && <Squadra userTeam={userTeam} />}
           {tab === "classifica" && <Classifica standings={standings} />}
@@ -175,7 +205,9 @@ export default function AppShell({
               userTeam={userTeam}
             />
           )}
-          {tab === "configura" && <Configura userTeam={userTeam} />}
+          {tab === "configura" && (
+            <Configura userTeam={userTeam} config={config} freeAgents={freeAgents} />
+          )}
         </div>
       </main>
     </>

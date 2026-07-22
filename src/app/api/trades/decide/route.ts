@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLeagueRepository } from "@/lib/league/repository";
+import { outcomeSquadTrade } from "@/lib/league/news";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,6 +75,9 @@ export async function POST(request: Request) {
         "mercato",
       );
     }
+
+    // Articolo di esito sulla Gazzetta.
+    await repo.addNewsArticle(outcomeSquadTrade(userTeam.name, other.name, give, receive, accepted));
 
     return NextResponse.json({ ok: true, status: accepted ? "accepted" : "rejected" });
   } catch (err) {
