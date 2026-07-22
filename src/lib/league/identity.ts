@@ -1,12 +1,18 @@
 // Logica PURA dell'identità squadra e dell'immagine del giocatore:
 // risoluzione colori (sociali → default app), numero di maglia, priorità
-// dell'immagine (foto giocatore > maglia squadra > maglia generata). Testabile.
+// dell'immagine (foto giocatore > maglia squadra > maglia di default fissa).
+// Testabile.
 
 import type { LeaguePlayer, TeamIdentity } from "./types";
 import { pickIndex } from "@/lib/figurine/traits";
 
 // Colori di default dell'app (verde scuro / oro del restyling).
 export const APP_COLORS = { primary: "#123D28", secondary: "#D4AF37" } as const;
+
+// Maglia di default fissa dell'app: asset del codice servito da /public, sempre
+// presente e non modificabile. Usata come fallback finale per ogni giocatore
+// senza foto propria e la cui squadra non ha una maglia caricata.
+export const DEFAULT_JERSEY_SRC = "/maglia-default.png";
 
 export const RARE_FM_THRESHOLD = 7;
 
@@ -32,22 +38,25 @@ export function displayNumber(player: LeaguePlayer): number {
   return n && n >= 1 && n <= 99 ? n : defaultJerseyNumber(player.name);
 }
 
-export type PlayerImageMode = "photo" | "jerseyFront" | "generated";
+export type PlayerImageMode = "photo" | "jerseyFront" | "default";
 
 export interface ResolvedPlayerImage {
   mode: PlayerImageMode;
-  src: string | null; // url per photo/jerseyFront; null per la maglia generata
+  src: string; // url dell'immagine: sempre valorizzata (mai null)
   rare: boolean;
 }
 
-// Priorità: foto del giocatore (mostrata SENZA alterazioni) > maglia squadra
-// (fronte) > maglia generata nei colori sociali.
+// Priorità, dal più specifico:
+//  1. foto del giocatore (mostrata SENZA alterazioni)
+//  2. maglia caricata dalla squadra (fronte)
+//  3. maglia di default fissa dell'app (asset /public/maglia-default.png)
+// Il fallback finale è sempre disponibile: `src` non è mai null.
 export function resolvePlayerImage(player: LeaguePlayer): ResolvedPlayerImage {
   const rare = player.fm >= RARE_FM_THRESHOLD;
   if (player.imageUrl) return { mode: "photo", src: player.imageUrl, rare };
   const jersey = player.owner?.jerseyFrontUrl ?? null;
   if (jersey) return { mode: "jerseyFront", src: jersey, rare };
-  return { mode: "generated", src: null, rare };
+  return { mode: "default", src: DEFAULT_JERSEY_SRC, rare };
 }
 
 // Combinazioni di colori sociali predefinite.

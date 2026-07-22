@@ -1,14 +1,14 @@
 // Figurina stile album: cornice nei colori sociali (oro per la variante "rara"),
 // immagine del giocatore secondo priorità (foto caricata > maglia squadra >
-// maglia generata), stemma della squadra come badge, overlay in basso con
-// nome e numero di maglia. La foto caricata è mostrata SENZA alterazioni: bordo,
-// badge e overlay sono elementi grafici separati sovrapposti.
+// maglia di default fissa dell'app), stemma della squadra come badge (logo app
+// come fallback), overlay in basso con nome e numero di maglia. La foto caricata
+// è mostrata SENZA alterazioni: bordo, badge e overlay sono elementi grafici
+// separati sovrapposti.
 import Link from "next/link";
 import type { LeaguePlayer } from "@/lib/league/types";
 import { resolvePlayerImage, resolveTeamColors, displayNumber } from "@/lib/league/identity";
 import { ROLE_BADGE } from "@/components/theme";
 import TeamCrest from "@/components/brand/TeamCrest";
-import JerseyMark from "./JerseyMark";
 
 type Size = "sm" | "md" | "lg";
 
@@ -61,20 +61,12 @@ export default function Figurina({
             className="relative aspect-[100/118] w-full overflow-hidden"
             style={{ background: `linear-gradient(160deg, ${colors.primary}, ${colors.secondary})` }}
           >
-            {resolved.mode === "generated" ? (
-              <JerseyMark
-                primary={colors.primary}
-                secondary={colors.secondary}
-                className="absolute inset-0 h-full w-full"
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imgSrc ?? undefined}
-                alt={player.name}
-                className={`absolute inset-0 h-full w-full ${isPhoto ? "object-contain" : "object-cover"}`}
-              />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imgSrc}
+              alt={player.name}
+              className={`absolute inset-0 h-full w-full ${isPhoto ? "object-contain" : "object-cover"}`}
+            />
 
             {/* Stemma squadra */}
             <span

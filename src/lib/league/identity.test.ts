@@ -6,6 +6,7 @@ import {
   resolvePlayerImage,
   isValidHexColor,
   APP_COLORS,
+  DEFAULT_JERSEY_SRC,
 } from "./identity";
 import type { LeaguePlayer, Role, TeamIdentity } from "./types";
 
@@ -80,11 +81,36 @@ describe("resolvePlayerImage (priorità)", () => {
     expect(r.mode).toBe("jerseyFront");
     expect(r.src).toBe("/uploads/teams/j.png");
   });
-  it("senza foto né maglia usa la maglia generata", () => {
+  it("senza foto né maglia usa la maglia di default fissa dell'app", () => {
     const r = resolvePlayerImage(player({ name: "X" }));
-    expect(r.mode).toBe("generated");
-    expect(r.src).toBeNull();
+    expect(r.mode).toBe("default");
+    expect(r.src).toBe(DEFAULT_JERSEY_SRC);
     expect(r.rare).toBe(false);
+  });
+
+  it("il fallback di default vale anche se la squadra ha colori sociali ma nessuna maglia", () => {
+    const r = resolvePlayerImage(
+      player({ name: "Y", owner: ident({ color1: "#111111", color2: "#eeeeee" }) }),
+    );
+    expect(r.mode).toBe("default");
+    expect(r.src).toBe(DEFAULT_JERSEY_SRC);
+  });
+
+  it("src è SEMPRE una stringa utilizzabile: nessun percorso genera più una maglia SVG", () => {
+    const cases = [
+      player({ name: "A", imageUrl: "/uploads/players/a.png" }),
+      player({ name: "B", owner: ident({ jerseyFrontUrl: "/uploads/teams/b.png" }) }),
+      player({ name: "C" }),
+      player({ name: "D", owner: ident({ color1: "#222222" }) }),
+    ];
+    for (const p of cases) {
+      const r = resolvePlayerImage(p);
+      expect(typeof r.src).toBe("string");
+      expect(r.src.length).toBeGreaterThan(0);
+      expect(["photo", "jerseyFront", "default"]).toContain(r.mode);
+      // la modalità "generated" (maglia SVG) non esiste più
+      expect(r.mode as string).not.toBe("generated");
+    }
   });
 });
 
