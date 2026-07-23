@@ -18,7 +18,12 @@ import {
   freeAgentRationale,
   freeAgentComment,
 } from "@/lib/league/freeagents";
-import { announceFreeAgent, outcomeFreeAgent, announceIdolLevelUp } from "@/lib/league/news";
+import {
+  announceFreeAgent,
+  outcomeFreeAgent,
+  announceIdolLevelUp,
+  derbyArticle,
+} from "@/lib/league/news";
 import { IDOL_LEVEL_META, type IdolLevel } from "@/lib/league/idol";
 
 export const runtime = "nodejs";
@@ -287,6 +292,23 @@ export async function POST() {
       }
     } catch (e) {
       console.error("[/api/simulate] idolo", e);
+    }
+
+    // Derby col rivale storico: se le due squadre si sono affrontate, aggiorna lo
+    // storico e genera un articolo speciale a tono di derby.
+    try {
+      const derbies = await repo.advanceRivalTracking(results);
+      for (const d of derbies) {
+        await repo.addNewsArticle(
+          derbyArticle(d.userTeamName, d.rivalTeamName, d.userScore, d.rivalScore, d.record),
+        );
+        await repo.pushFlashNews(
+          `Derby! ${d.userTeamName} ${d.userScore.toFixed(1)} - ${d.rivalScore.toFixed(1)} ${d.rivalTeamName}.`,
+          "derby",
+        );
+      }
+    } catch (e) {
+      console.error("[/api/simulate] derby", e);
     }
 
     // Voti AI agli allenatori (fallback a template in modalità demo o in caso d'errore).

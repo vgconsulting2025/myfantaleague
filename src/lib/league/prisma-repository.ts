@@ -13,12 +13,14 @@ import type {
   LeaguePlayer,
   LeagueTeam,
   MatchResult,
+  RivalRecord,
   Role,
   TeamIdentity,
   TradeRecord,
   TradeStatus,
 } from "./types";
 import { nextIdolCounters, idolLevel } from "./idol";
+import { applyDerbyResult } from "./rival";
 import type {
   LeagueRepository,
   NewTrade,
@@ -30,6 +32,7 @@ import type {
   FreeAgentInput,
   NewFreeAgentProposal,
   IdolLevelUp,
+  DerbyEvent,
 } from "./repository";
 import type { ImportResultRow } from "./import/types";
 import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
@@ -66,6 +69,14 @@ type TeamRow = {
   idolStreak?: number;
   idolLevel?: number;
   idolQuote?: string | null;
+  rivalTeamId?: string | null;
+  rivalSetGiornata?: number | null;
+  rivalWins?: number;
+  rivalDraws?: number;
+  rivalLosses?: number;
+  rivalPointsFor?: number;
+  rivalPointsAgainst?: number;
+  rivalDerbies?: number;
 };
 
 function teamIdentity(t: {
@@ -125,6 +136,27 @@ function idolProgressOf(t: {
   };
 }
 
+// Storico derby corrente ricavato dai contatori sulla squadra.
+function rivalRecordOf(t: {
+  rivalWins?: number;
+  rivalDraws?: number;
+  rivalLosses?: number;
+  rivalPointsFor?: number;
+  rivalPointsAgainst?: number;
+  rivalDerbies?: number;
+  rivalSetGiornata?: number | null;
+}): RivalRecord {
+  return {
+    wins: t.rivalWins ?? 0,
+    draws: t.rivalDraws ?? 0,
+    losses: t.rivalLosses ?? 0,
+    pointsFor: t.rivalPointsFor ?? 0,
+    pointsAgainst: t.rivalPointsAgainst ?? 0,
+    derbies: t.rivalDerbies ?? 0,
+    setGiornata: t.rivalSetGiornata ?? null,
+  };
+}
+
 function mapTeam(t: TeamRow): LeagueTeam {
   const roleOrder: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 };
   const identity = teamIdentity(t);
@@ -153,6 +185,9 @@ function mapTeam(t: TeamRow): LeagueTeam {
     color2: identity.color2,
     idolPlayerId: idolId,
     idolSetGiornata: t.idolSetGiornata ?? null,
+    rivalTeamId: t.rivalTeamId ?? null,
+    rivalSetGiornata: t.rivalSetGiornata ?? null,
+    rivalRecord: t.rivalTeamId ? rivalRecordOf(t) : null,
   };
 }
 
@@ -607,6 +642,77 @@ export class PrismaLeagueRepository implements LeagueRepository {
       ratings,
       votes,
     );
+  }
+
+  async setRival(teamId: string, giornata: number): Promise<void> {
+    const userTeam = await prisma.team.findFirst({ where: { isUser: true } });
+    if (!userTeam) throw new Error("Nessuna squadra utente.");
+    const rival = await prisma.team.findUnique({ where: { id: teamId } });
+    if (!rival || rival.id === userTeam.id) throw new Error("Rivale non valido.");
+    // Nuova scelta del rivale: azzera lo storico dei derby.
+    await prisma.team.update({
+      where: { id: userTeam.id },
+      data: {
+        rivalTeamId: teamId,
+        rivalSetGiornata: giornata,
+        rivalWins: 0,
+        rivalDraws: 0,
+        rivalLosses: 0,
+        rivalPointsFor: 0,
+        rivalPointsAgainst: 0,
+        rivalDerbies: 0,
+      },
+    });
+  }
+
+  async advanceRivalTracking(results: MatchResult[]): Promise<DerbyEvent[]> {
+    const teams = await prisma.team.findMany({ where: { NOT: { rivalTeamId: null } } });
+    const events: DerbyEvent[] = [];
+    for (const team of teams) {
+      if (!team.rivalTeamId) continue;
+      const rival = await prisma.team.findUnique({ where: { id: team.rivalTeamId } });
+      if (!rival) continue;
+      // Il derby: il risultato in cui le due squadre si sono affrontate.
+      const match = results.find(
+        (r) =>
+          (r.home === team.name && r.away === rival.name) ||
+          (r.home === rival.name && r.away === team.name),
+      );
+      if (!match) continue;
+      const userScore = match.home === team.name ? match.homeScore : match.awayScore;
+      const rivalScore = match.home === team.name ? match.awayScore : match.homeScore;
+      const next = applyDerbyResult(
+        {
+          wins: team.rivalWins,
+          draws: team.rivalDraws,
+          losses: team.rivalLosses,
+          pointsFor: team.rivalPointsFor,
+          pointsAgainst: team.rivalPointsAgainst,
+          derbies: team.rivalDerbies,
+        },
+        userScore,
+        rivalScore,
+      );
+      await prisma.team.update({
+        where: { id: team.id },
+        data: {
+          rivalWins: next.wins,
+          rivalDraws: next.draws,
+          rivalLosses: next.losses,
+          rivalPointsFor: next.pointsFor,
+          rivalPointsAgainst: next.pointsAgainst,
+          rivalDerbies: next.derbies,
+        },
+      });
+      events.push({
+        userTeamName: team.name,
+        rivalTeamName: rival.name,
+        userScore,
+        rivalScore,
+        record: next,
+      });
+    }
+    return events;
   }
 
   async setIdol(playerId: string, giornata: number): Promise<void> {

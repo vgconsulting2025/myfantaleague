@@ -6,6 +6,7 @@ import {
   outcomeFreeAgent,
   announceIdol,
   announceIdolLevelUp,
+  derbyArticle,
 } from "./news";
 
 describe("articolo di proposta — scambio tra squadre", () => {
@@ -64,5 +65,23 @@ describe("articolo — salita di livello idolo", () => {
     expect(`${up.title} ${up.body}`).toMatch(/Verde/);
     // diverso dall'articolo di semplice designazione
     expect(up.kicker).not.toBe(announceIdol("Real Divano", "Barella").kicker);
+  });
+});
+
+describe("articolo — derby col rivale storico", () => {
+  it("cita le due squadre, il punteggio e il computo storico degli scontri", () => {
+    const a = derbyArticle("Real Divano", "AC Sciacallo", 72, 65, {
+      wins: 3,
+      draws: 1,
+      losses: 2,
+      pointsFor: 400,
+      pointsAgainst: 380,
+      derbies: 6,
+    });
+    expect(a.category).toBe("DERBY");
+    expect(`${a.title} ${a.body}`).toContain("Real Divano");
+    expect(`${a.title} ${a.body}`).toContain("AC Sciacallo");
+    expect(a.body).toMatch(/3V 1N 2P/);
+    expect(a.body).toContain("6 derby");
   });
 });

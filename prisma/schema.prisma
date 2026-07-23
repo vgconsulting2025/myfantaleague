@@ -34,6 +34,15 @@ model Team {
   idolStreak      Int     @default(0) // giornate consecutive da idolo senza cambio
   idolLevel       Int     @default(1) // livello progressione idolo (1 Bronzo .. 4 Leggenda)
   idolQuote       String? // citazione "da tifoso" (solo livello Leggenda)
+  // Rivale storico: una squadra della lega scelta come rivale + storico derby.
+  rivalTeamId        String? // id della squadra rivale (nessuna FK: risolto a mano)
+  rivalSetGiornata   Int? // giornata dell'ultima scelta (vincolo: 1 cambio per giornata)
+  rivalWins          Int   @default(0) // vittorie nei derby contro il rivale corrente
+  rivalDraws         Int   @default(0) // pareggi nei derby
+  rivalLosses        Int   @default(0) // sconfitte nei derby
+  rivalPointsFor     Float @default(0) // punteggio totale della squadra nei derby
+  rivalPointsAgainst Float @default(0) // punteggio totale del rivale nei derby
+  rivalDerbies       Int   @default(0) // numero di derby giocati
 }
 
 model Player {

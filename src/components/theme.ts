@@ -29,6 +29,7 @@ export function categoryStyle(category: string): string {
     MERCATO: "bg-verde-200 text-verde-900",
     SVINCOLATI: "bg-oro-200 text-oro-800",
     IDOLO: "bg-verde-700 text-white",
+    DERBY: "bg-rose-100 text-rose-700",
     PANCHINE: "bg-oro-50 text-oro-600",
   };
   return map[key] ?? "bg-verde-100 text-verde-700";

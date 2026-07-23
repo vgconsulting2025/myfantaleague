@@ -4,6 +4,7 @@
 
 import type { ArticleInput } from "./types";
 import { IDOL_LEVEL_META, type IdolLevel } from "./idol";
+import { derbyOutcome, type RivalCounters } from "./rival";
 
 function pick<T>(a: T[]): T {
   return a[Math.floor(Math.random() * a.length)];
@@ -177,5 +178,44 @@ export function announceIdolLevelUp(
       "Cornice nuova, ambizioni immutate.",
       "Un altro gradino verso la leggenda.",
     ])}`,
+  };
+}
+
+// Articolo speciale del DERBY: quando la tua squadra affronta il rivale storico.
+// Tono acceso, richiama la rivalità e il computo storico degli scontri. `record`
+// è lo storico GIÀ aggiornato con questo derby.
+export function derbyArticle(
+  userTeam: string,
+  rivalTeam: string,
+  userScore: number,
+  rivalScore: number,
+  record: RivalCounters,
+): ArticleInput {
+  const o = derbyOutcome(userScore, rivalScore);
+  const scoreLine = `${userTeam} ${userScore.toFixed(1)} - ${rivalScore.toFixed(1)} ${rivalTeam}`;
+  const title =
+    o === "win"
+      ? pick([
+          `Derby ai ${userTeam}: ${rivalTeam} al tappeto`,
+          `${userTeam} domina il derby con ${rivalTeam}`,
+        ])
+      : o === "loss"
+        ? pick([
+            `Beffa nel derby: ${rivalTeam} passa sul ${userTeam}`,
+            `${rivalTeam} sbanca il derby contro ${userTeam}`,
+          ])
+        : pick([
+            `Derby diviso: ${userTeam} e ${rivalTeam} non si fanno male`,
+            `Pari e nervi tesi nel derby ${userTeam}-${rivalTeam}`,
+          ]);
+  return {
+    kicker: "Derby",
+    category: "DERBY",
+    title,
+    body: `${scoreLine}. ${pick([
+      "Rivalità di sempre.",
+      "Sfida sentitissima, come da tradizione.",
+      "Il derby non tradisce mai le attese.",
+    ])} Nella storia della sfida col rivale: ${record.wins}V ${record.draws}N ${record.losses}P per ${userTeam}, ${record.pointsFor.toFixed(1)}-${record.pointsAgainst.toFixed(1)} il totale in ${record.derbies} derby.`,
   };
 }

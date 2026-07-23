@@ -39,6 +39,17 @@ export interface LeaguePlayer {
   idolProgress?: IdolProgress | null; // valorizzato solo sul giocatore idolo
 }
 
+// Storico degli scontri diretti (derby) contro il rivale corrente.
+export interface RivalRecord {
+  wins: number;
+  draws: number;
+  losses: number;
+  pointsFor: number; // punteggio totale della propria squadra nei derby
+  pointsAgainst: number; // punteggio totale del rivale nei derby
+  derbies: number; // numero di derby giocati
+  setGiornata: number | null; // giornata dell'ultima scelta del rivale
+}
+
 export interface LeagueTeam {
   id: string;
   slug: string;
@@ -54,6 +65,9 @@ export interface LeagueTeam {
   color2?: string | null;
   idolPlayerId?: string | null; // id del giocatore idolo (null = nessuno)
   idolSetGiornata?: number | null; // giornata dell'ultima designazione (vincolo cambio)
+  rivalTeamId?: string | null; // id della squadra rivale (null = nessuno)
+  rivalSetGiornata?: number | null; // giornata dell'ultima scelta (vincolo cambio)
+  rivalRecord?: RivalRecord | null; // storico derby vs rivale corrente
 }
 
 export interface PlayerPerformance {

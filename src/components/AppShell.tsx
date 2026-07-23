@@ -198,7 +198,9 @@ export default function AppShell({
           {tab === "squadra" && (
             <Squadra userTeam={userTeam} latestGiornataNumber={latestGiornata?.number ?? 0} />
           )}
-          {tab === "classifica" && <Classifica standings={standings} />}
+          {tab === "classifica" && (
+            <Classifica standings={standings} latestGiornataNumber={latestGiornata?.number ?? 0} />
+          )}
           {tab === "voti" && (
             <Voti
               standings={presidentStandings}

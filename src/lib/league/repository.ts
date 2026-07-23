@@ -26,6 +26,7 @@ import type {
   TradeStatus,
 } from "./types";
 import type { ImportResultRow } from "./import/types";
+import type { RivalCounters } from "./rival";
 
 export interface FreeAgentInput {
   name: string;
@@ -68,6 +69,16 @@ export interface IdolLevelUp {
   playerName: string;
   fromLevel: number;
   toLevel: number;
+}
+
+// Derby col rivale storico giocato in una giornata, restituito da
+// advanceRivalTracking. `record` è lo storico GIÀ aggiornato con questo derby.
+export interface DerbyEvent {
+  userTeamName: string;
+  rivalTeamName: string;
+  userScore: number;
+  rivalScore: number;
+  record: RivalCounters;
 }
 
 export interface CoachRatingInput {
@@ -160,6 +171,11 @@ export interface LeagueRepository {
   getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null>;
   setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void>;
   executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void>;
+
+  // Rivale storico
+  setRival(teamId: string, giornata: number): Promise<void>;
+  // Rileva i derby utente-rivale nella giornata, aggiorna lo storico e li ritorna.
+  advanceRivalTracking(results: MatchResult[]): Promise<DerbyEvent[]>;
 
   // Giocatore idolo
   setIdol(playerId: string, giornata: number): Promise<void>;
