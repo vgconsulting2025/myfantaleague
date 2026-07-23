@@ -6,6 +6,8 @@ import {
   fantavoto,
   idolLevel,
   idolLevelInfo,
+  partitionIdol,
+  ceremonyTitle,
   type IdolPerf,
 } from "./idol";
 
@@ -113,5 +115,32 @@ describe("transizione di livello a fine giornata", () => {
     const after = nextIdolCounters(before, [perf("Idolo", 6, 0)], "Idolo"); // +streak, +fv
     expect(idolLevel(before)).toBe(1);
     expect(idolLevel(after)).toBeGreaterThan(idolLevel(before));
+  });
+});
+
+describe("partitionIdol (podio vs griglia)", () => {
+  const roster = [
+    { id: "a", isIdol: false },
+    { id: "b", isIdol: true },
+    { id: "c", isIdol: false },
+  ];
+  it("mette l'idolo corrente nel podio e gli altri nella griglia (nessun duplicato)", () => {
+    const { idol, others } = partitionIdol(roster);
+    expect(idol?.id).toBe("b");
+    expect(others.map((p) => p.id)).toEqual(["a", "c"]);
+    expect(others.some((p) => p.isIdol)).toBe(false);
+  });
+  it("senza idolo, il podio è vuoto e tutti restano nella griglia", () => {
+    const { idol, others } = partitionIdol([{ id: "x", isIdol: false }]);
+    expect(idol).toBeNull();
+    expect(others).toHaveLength(1);
+  });
+});
+
+describe("ceremonyTitle (testo cerimonia)", () => {
+  it("distingue prima designazione e cambio idolo", () => {
+    expect(ceremonyTitle(false)).toMatch(/scelto/i);
+    expect(ceremonyTitle(true)).toMatch(/nuovo/i);
+    expect(ceremonyTitle(false)).not.toBe(ceremonyTitle(true));
   });
 });

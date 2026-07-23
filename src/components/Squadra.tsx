@@ -4,10 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { LeaguePlayer, LeagueTeam } from "@/lib/league/types";
-import { canChangeIdol } from "@/lib/league/idol";
+import { canChangeIdol, partitionIdol, idolLevelInfo, IDOL_LEVEL_META } from "@/lib/league/idol";
 import { ROLE_LABELS, ROLE_ORDER } from "./theme";
 import { RoleBadge } from "./ui";
 import Figurina from "./figurine/Figurina";
+import CeremonyModal from "./figurine/CeremonyModal";
 import PlayerThumb from "./figurine/PlayerThumb";
 import TeamCrest from "./brand/TeamCrest";
 
@@ -15,29 +16,19 @@ function StatCard({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="font-display text-4xl font-bold text-slate-900">{value}</div>
-      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
+      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
     </div>
   );
 }
 
-function ViewToggle({
-  view,
-  setView,
-}: {
-  view: "grid" | "list";
-  setView: (v: "grid" | "list") => void;
-}) {
+function ViewToggle({ view, setView }: { view: "grid" | "list"; setView: (v: "grid" | "list") => void }) {
   return (
     <div className="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white text-sm font-semibold">
       {(["grid", "list"] as const).map((v) => (
         <button
           key={v}
           onClick={() => setView(v)}
-          className={`px-3 py-2 transition ${
-            view === v ? "bg-verde text-white" : "text-slate-600 hover:bg-slate-50"
-          }`}
+          className={`px-3 py-2 transition ${view === v ? "bg-verde text-white" : "text-slate-600 hover:bg-slate-50"}`}
         >
           {v === "grid" ? "Figurine" : "Elenco"}
         </button>
@@ -46,40 +37,69 @@ function ViewToggle({
   );
 }
 
-// Stella per designare l'idolo. Se il giocatore è già idolo mostra il badge
-// attivo; altrimenti un pulsante (disabilitato se il cambio non è ancora
-// consentito per il vincolo di una modifica a giornata).
-function IdolStar({
+// Pulsante corona: apre la cerimonia di incoronazione per il giocatore.
+// Disabilitato se il cambio non è ancora consentito (vincolo 1/giornata).
+function IdolCrownButton({
   player,
   canChange,
-  busy,
-  onDesignate,
+  onOpen,
 }: {
   player: LeaguePlayer;
   canChange: boolean;
-  busy: boolean;
-  onDesignate: (id: string) => void;
+  onOpen: (p: LeaguePlayer) => void;
 }) {
-  if (player.isIdol) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-oro/20 px-2.5 py-1 text-xs font-bold text-oro-800 ring-1 ring-oro">
-        <span aria-hidden>★</span> Idolo
-      </span>
-    );
-  }
   return (
     <button
-      onClick={() => onDesignate(player.id)}
-      disabled={busy || !canChange}
+      onClick={() => onOpen(player)}
+      disabled={!canChange}
       title={
         canChange
-          ? "Designa come idolo della squadra"
+          ? "Incorona come idolo della squadra"
           : "Potrai cambiare idolo dopo la prossima giornata"
       }
       className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:text-oro-700 hover:ring-oro disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <span aria-hidden>☆</span> {busy ? "..." : "Idolo"}
+      <span aria-hidden>♛</span> Incorona
     </button>
+  );
+}
+
+// Podio "Il tuo Idolo": posizione d'onore in alto, con la figurina più grande su
+// uno sfondo distintivo (diverso dai badge di livello e dalla variante "rara").
+function IdolPodium({ idol }: { idol: LeaguePlayer }) {
+  const info = idol.idolProgress ? idolLevelInfo(idol.idolProgress) : null;
+  return (
+    <section className="relative mb-8 overflow-hidden rounded-3xl bg-verde-900 p-6 text-white shadow-lg ring-1 ring-oro/30">
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{ background: "radial-gradient(120% 90% at 28% -10%, rgba(212,175,55,0.20), transparent 60%)" }}
+      />
+      <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+        <Figurina player={idol} size="lg" href={`/figurina/${idol.id}`} />
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-oro-200">Il tuo Idolo</div>
+          <h3 className="mt-1 truncate font-display text-3xl font-bold text-oro">{idol.name}</h3>
+          <div className="text-sm text-white/70">
+            {ROLE_LABELS[idol.role]} · {idol.club || "—"} · FM {idol.fm.toFixed(1)}
+          </div>
+          {info && idol.idolProgress && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <span className="rounded-full bg-oro px-3 py-1 text-xs font-bold uppercase tracking-wide text-verde-900">
+                Livello {IDOL_LEVEL_META[info.level].label}
+              </span>
+              <span className="text-xs text-white/70">
+                Fedeltà {idol.idolProgress.streak} giornate · Migliore in campo {idol.idolProgress.bestCount} ·
+                Fantamedia cumulata {idol.idolProgress.cumFm.toFixed(1)}
+              </span>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-white/50">
+            Cambia idolo con la corona ♛ sulle figurine qui sotto (una volta a giornata).
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -93,47 +113,67 @@ export default function Squadra({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [idolError, setIdolError] = useState<string | null>(null);
+  const [ceremonyPlayer, setCeremonyPlayer] = useState<LeaguePlayer | null>(null);
+  const [ceremonyBusy, setCeremonyBusy] = useState(false);
+  const [ceremonyError, setCeremonyError] = useState<string | null>(null);
+
   const players = userTeam.players;
-  const idol = players.find((p) => p.isIdol) ?? null;
+  const { idol, others } = partitionIdol(players);
   const canChange = canChangeIdol(
     userTeam.idolPlayerId ?? null,
     userTeam.idolSetGiornata ?? null,
     latestGiornataNumber,
   );
 
-  async function designate(playerId: string) {
-    setBusyId(playerId);
-    setIdolError(null);
+  function openCeremony(p: LeaguePlayer) {
+    setCeremonyError(null);
+    setCeremonyPlayer(p);
+  }
+  function closeCeremony() {
+    if (ceremonyBusy) return;
+    setCeremonyPlayer(null);
+    setCeremonyError(null);
+  }
+  async function confirmCeremony() {
+    if (!ceremonyPlayer) return;
+    setCeremonyBusy(true);
+    setCeremonyError(null);
     try {
       const res = await fetch("/api/idol", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({ playerId: ceremonyPlayer.id }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Impossibile designare l'idolo.");
+      if (!res.ok) throw new Error(data.error || "Impossibile incoronare l'idolo.");
+      setCeremonyPlayer(null);
       startTransition(() => router.refresh());
     } catch (e) {
-      setIdolError(e instanceof Error ? e.message : "Errore.");
+      setCeremonyError(e instanceof Error ? e.message : "Errore.");
     } finally {
-      setBusyId(null);
+      setCeremonyBusy(false);
     }
   }
+
   const totalQuota = players.reduce((s, p) => s + p.quota, 0);
   const avgFm = players.length
     ? (players.reduce((s, p) => s + p.fm, 0) / players.length).toFixed(2)
     : "0.00";
 
+  // Statistiche reparti su TUTTA la rosa (idolo incluso).
   const reparti = ROLE_ORDER.map((role) => {
     const ps = players.filter((p) => p.role === role);
     const avg = ps.length ? ps.reduce((s, p) => s + p.fm, 0) / ps.length : 0;
-    return { role, count: ps.length, avg, players: ps };
+    return { role, count: ps.length, avg };
   }).filter((r) => r.count > 0);
-
   const strongest = reparti.reduce((a, b) => (b.avg > a.avg ? b : a), reparti[0]);
   const weakest = reparti.reduce((a, b) => (b.avg < a.avg ? b : a), reparti[0]);
+
+  // Griglia: l'idolo è nel podio, non qui (nessun duplicato).
+  const gridReparti = ROLE_ORDER.map((role) => ({
+    role,
+    players: others.filter((p) => p.role === role),
+  })).filter((r) => r.players.length > 0);
 
   return (
     <div>
@@ -159,27 +199,39 @@ export default function Squadra({
         <StatCard value={String(userTeam.points)} label="Punti in classifica" />
       </div>
 
+      {/* Podio "Il tuo Idolo" (posizione d'onore) */}
+      {idol ? (
+        <IdolPodium idol={idol} />
+      ) : (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-oro-200 bg-oro-50/50 px-4 py-3">
+          <span className="text-oro" aria-hidden>
+            ♛
+          </span>
+          <span className="text-sm font-semibold text-verde-900">Nessun idolo designato</span>
+          <span className="text-xs text-slate-500">
+            · Scegline uno con la corona ♛ sulle figurine qui sotto.
+          </span>
+        </div>
+      )}
+      {idol && !canChange && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-700">
+          Potrai cambiare idolo dopo la prossima giornata (una modifica per giornata).
+        </div>
+      )}
+
       {/* Punti di forza / reparti scoperti (calcolo locale) */}
       {strongest && weakest && (
         <div className="mb-8 grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-verde-200 bg-verde-50 p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-verde-700">
-              Punto di forza
-            </div>
-            <div className="mt-1 font-display text-2xl font-bold text-verde-900">
-              {ROLE_LABELS[strongest.role]}
-            </div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-verde-700">Punto di forza</div>
+            <div className="mt-1 font-display text-2xl font-bold text-verde-900">{ROLE_LABELS[strongest.role]}</div>
             <div className="text-sm text-verde-700">
               Fantamedia media {strongest.avg.toFixed(2)} · {strongest.count} giocatori
             </div>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-              Reparto più scoperto
-            </div>
-            <div className="mt-1 font-display text-2xl font-bold text-amber-900">
-              {ROLE_LABELS[weakest.role]}
-            </div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">Reparto più scoperto</div>
+            <div className="mt-1 font-display text-2xl font-bold text-amber-900">{ROLE_LABELS[weakest.role]}</div>
             <div className="text-sm text-amber-800">
               Fantamedia media {weakest.avg.toFixed(2)} · {weakest.count} giocatori
             </div>
@@ -187,38 +239,15 @@ export default function Squadra({
         </div>
       )}
 
-      {/* Idolo della squadra */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-oro-200 bg-oro-50/50 px-4 py-3">
-        <span className="text-oro" aria-hidden>
-          ★
-        </span>
-        <span className="text-sm font-semibold text-verde-900">
-          Idolo della squadra: {idol ? idol.name : "nessuno"}
-        </span>
-        <span className="text-xs text-slate-500">
-          · Designalo con la stella sulla figurina. Puoi cambiarlo una volta a giornata.
-        </span>
-        {!canChange && (
-          <span className="text-xs font-medium text-amber-700">
-            · Cambio disponibile dopo la prossima giornata.
-          </span>
-        )}
-      </div>
-      {idolError && (
-        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
-          {idolError}
-        </div>
-      )}
-
-      {/* Rosa per ruolo */}
-      {reparti.map((r) => (
+      {/* Rosa per ruolo (idolo escluso: è nel podio) */}
+      {gridReparti.map((r) => (
         <div key={r.role} className="mb-8">
           <div className="mb-3 flex items-center gap-2 border-b-2 border-slate-900 pb-1">
             <RoleBadge role={r.role} />
             <span className="font-display text-lg font-semibold uppercase tracking-wide text-slate-800">
               {ROLE_LABELS[r.role]}
             </span>
-            <span className="text-xs font-medium text-slate-400">· {r.count} giocatori</span>
+            <span className="text-xs font-medium text-slate-400">· {r.players.length} giocatori</span>
           </div>
 
           {view === "grid" ? (
@@ -226,12 +255,7 @@ export default function Squadra({
               {r.players.map((p) => (
                 <div key={p.id} className="flex flex-col items-center gap-2">
                   <Figurina player={p} size="md" href={`/figurina/${p.id}`} />
-                  <IdolStar
-                    player={p}
-                    canChange={canChange}
-                    busy={busyId === p.id}
-                    onDesignate={designate}
-                  />
+                  <IdolCrownButton player={p} canChange={canChange} onOpen={openCeremony} />
                 </div>
               ))}
             </div>
@@ -259,12 +283,7 @@ export default function Squadra({
                     >
                       FM {p.fm.toFixed(1)}
                     </span>
-                    <IdolStar
-                      player={p}
-                      canChange={canChange}
-                      busy={busyId === p.id}
-                      onDesignate={designate}
-                    />
+                    <IdolCrownButton player={p} canChange={canChange} onOpen={openCeremony} />
                   </li>
                 ))}
               </ul>
@@ -272,6 +291,18 @@ export default function Squadra({
           )}
         </div>
       ))}
+
+      {/* Cerimonia di incoronazione */}
+      {ceremonyPlayer && (
+        <CeremonyModal
+          player={ceremonyPlayer}
+          isChange={!!idol}
+          busy={ceremonyBusy}
+          error={ceremonyError}
+          onConfirm={confirmCeremony}
+          onClose={closeCeremony}
+        />
+      )}
     </div>
   );
 }

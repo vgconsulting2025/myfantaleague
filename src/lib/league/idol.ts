@@ -123,3 +123,21 @@ export function idolLevelInfo(c: IdolCounters): IdolLevelInfo {
     nextMin != null ? Math.max(0, Math.min(1, (score - currentMin) / (nextMin - currentMin))) : 1;
   return { level, next, score, currentMin, nextMin, progress };
 }
+
+/* ---------------- Podio + cerimonia di incoronazione ---------------- */
+
+// Separa l'idolo corrente dagli altri giocatori: l'idolo va nel podio "Il tuo
+// Idolo", gli altri restano nella griglia normale (nessun duplicato).
+export function partitionIdol<T extends { isIdol?: boolean }>(
+  players: T[],
+): { idol: T | null; others: T[] } {
+  return {
+    idol: players.find((p) => p.isIdol) ?? null,
+    others: players.filter((p) => !p.isIdol),
+  };
+}
+
+// Titolo della cerimonia: cambia se è la prima designazione o un cambio idolo.
+export function ceremonyTitle(isChange: boolean): string {
+  return isChange ? "Nuovo Idolo incoronato!" : "Hai scelto il tuo Idolo!";
+}
