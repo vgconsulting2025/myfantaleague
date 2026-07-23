@@ -302,6 +302,31 @@ body {
   animation: shield-spin 30s linear infinite reverse;
 }
 
+/* Shimmer olografico continuo sul nastro/superficie (Leggenda): un riflesso di
+   luce che scorre. */
+@keyframes shield-shimmer {
+  0% {
+    transform: translateX(-140%) skewX(-16deg);
+  }
+  100% {
+    transform: translateX(240%) skewX(-16deg);
+  }
+}
+.shield-shimmer {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: shield-shimmer 3.6s ease-in-out infinite;
+}
+.shield-shimmer.slow {
+  animation-duration: 6s;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+
 /* Leggenda — riflessi puntiformi che luccicano lungo il bordo doppio. */
 @keyframes shield-twinkle {
   0%,
@@ -331,7 +356,9 @@ body {
   .shield-glow-legend,
   .shield-holo,
   .shield-spin,
-  .shield-spin-rev {
+  .shield-spin-rev,
+  .shield-shimmer,
+  .shield-twinkle {
     animation: none !important;
   }
 }

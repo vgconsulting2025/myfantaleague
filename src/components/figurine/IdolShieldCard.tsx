@@ -1,9 +1,12 @@
-// Carta premium a SCUDO per il giocatore idolo. Geometria a scudo smerlato in
-// alto (due lobi) e punta arrotondata in basso, con DOPPIO BORDO. La cornice
-// (scudo, bordi, pattern, ornamenti, animazioni) è indipendente dal contenuto
-// centrale: la maglia di default o la foto caricata vengono ritagliate nella
-// finestra centrale. Quattro identità di design distinte a ricchezza crescente,
-// ciascuna con un dettaglio ornamentale unico nella zona del bordo. CSS puro.
+// Carta premium a SCUDO per il giocatore idolo — stile "carta premium a scudo":
+// forma a scudo con top a doppio lobo che si incontra in una piccola punta verso
+// l'alto al centro, fianchi dritti, base a punta arrotondata; DOPPIO BORDO sottile
+// (esterno chiaro + interno distanziato, nel metallo del livello); SUPERFICIE
+// chiara con venature marmo appena percettibili; NASTRO diagonale metallico con
+// bordo inferiore frangiato; DIVISORI (linea immagine/testo + trattino accanto al
+// nome). Shimmer olografico animato sopra nastro e superficie. Costruito da zero
+// in SVG/CSS. Dimensioni IDENTICHE tra i 4 livelli e coerenti con le figurine
+// normali; solo lo stile cambia (colori, pattern, ornamenti, animazioni).
 import type { LeaguePlayer } from "@/lib/league/types";
 import { resolvePlayerImage, displayNumber } from "@/lib/league/identity";
 import { ROLE_BADGE } from "@/components/theme";
@@ -11,244 +14,187 @@ import TeamCrest from "@/components/brand/TeamCrest";
 
 type Size = "sm" | "md" | "lg";
 
-// Sagoma scudo in coordinate objectBoundingBox (0..1): top smerlato a due lobi,
-// fianchi, punta arrotondata in basso.
+// Sagoma scudo (objectBoundingBox 0..1): due lobi in alto con piccola punta
+// centrale verso l'alto, fianchi dritti, base a punta arrotondata.
 const SHIELD_PATH =
-  "M0.05,0.12 C0.05,0.02 0.20,0.005 0.27,0.02 C0.36,0.04 0.44,0.085 0.5,0.085 " +
-  "C0.56,0.085 0.64,0.04 0.73,0.02 C0.80,0.005 0.95,0.02 0.95,0.12 " +
-  "C1,0.14 1,0.18 1,0.5 C1,0.7 0.74,0.9 0.5,1 " +
-  "C0.26,0.9 0,0.7 0,0.5 C0,0.18 0,0.14 0.05,0.12 Z";
+  "M0.05,0.15 C0.05,0.05 0.19,0.02 0.26,0.04 C0.34,0.055 0.40,0.085 0.44,0.085 " +
+  "L0.5,0.055 L0.56,0.085 C0.60,0.085 0.66,0.055 0.74,0.04 C0.81,0.02 0.95,0.05 0.95,0.15 " +
+  "C1,0.17 1,0.21 1,0.52 C1,0.72 0.74,0.9 0.5,1 C0.26,0.9 0,0.72 0,0.52 C0,0.21 0,0.17 0.05,0.15 Z";
 
+// Bordo inferiore leggermente frangiato del nastro (piccole punte irregolari):
+// corpo pieno fino a ~80%, poi denti bassi tra 80% e 100%.
+const RIBBON_CLIP = (() => {
+  const pts = ["0% 0%", "100% 0%"];
+  const n = 22;
+  for (let i = 0; i <= n; i++) {
+    const x = 100 - (i / n) * 100;
+    const y = i % 2 === 0 ? 100 : 80 + ((i * 41) % 9);
+    pts.push(`${x.toFixed(1)}% ${Math.round(y)}%`);
+  }
+  return `polygon(${pts.join(",")})`;
+})();
+
+// DIMENSIONI IDENTICHE tra i livelli; larghezze allineate alle figurine normali.
 const S: Record<
   Size,
   { w: number; name: string; num: string; meta: string; medal: number; star: string; crest: number; role: string }
 > = {
-  sm: { w: 122, name: "text-[10px]", num: "h-4 w-4 text-[9px]", meta: "text-[7px]", medal: 22, star: "text-[7px]", crest: 15, role: "text-[8px] px-1 py-0.5" },
-  md: { w: 176, name: "text-[13px]", num: "h-5 w-5 text-[11px]", meta: "text-[9px]", medal: 30, star: "text-[9px]", crest: 20, role: "text-[9px] px-1 py-0.5" },
-  lg: { w: 300, name: "text-lg", num: "h-8 w-8 text-sm", meta: "text-[11px]", medal: 50, star: "text-base", crest: 34, role: "text-xs px-1.5 py-0.5" },
+  sm: { w: 122, name: "text-[10px]", num: "h-4 w-4 text-[9px]", meta: "text-[7px]", medal: 20, star: "text-[7px]", crest: 14, role: "text-[8px] px-1 py-0.5" },
+  md: { w: 174, name: "text-[13px]", num: "h-5 w-5 text-[11px]", meta: "text-[9px]", medal: 28, star: "text-[9px]", crest: 19, role: "text-[9px] px-1 py-0.5" },
+  lg: { w: 300, name: "text-lg", num: "h-8 w-8 text-sm", meta: "text-[11px]", medal: 48, star: "text-base", crest: 33, role: "text-xs px-1.5 py-0.5" },
 };
 
 interface Design {
   label: string;
   stars: number; // 0 => corona
-  border: string;
-  borderClass?: string;
-  filet: string; // filettatura principale (doppio bordo)
-  filet2?: string; // seconda filettatura (Argento: ciano)
-  pattern: string;
-  spinLayer?: string;
-  spinClass?: string;
+  metalLight: string; // bordo esterno (chiaro)
+  metal: string; // bordo interno
+  surface: string; // superficie chiara (marmo)
+  vein: string; // colore venature
+  ribbon: string; // gradiente metallico del nastro (chiaro-scuro-chiaro)
+  ribbonHolo?: boolean; // nastro olografico animato (Leggenda)
+  ribbonSweep?: boolean; // riflesso periodico sul nastro (Argento+)
+  surfaceShimmer?: boolean; // shimmer sulla superficie (Leggenda)
   glowClass: string;
+  windowMatte: string;
   windowRing: string;
+  textMain: string;
+  textMeta: string;
+  tick: string; // colore trattino/divisore
   medalBg: string;
   medalText: string;
-  plate: string;
-  meta: string;
-  sweep?: boolean;
-  sparks?: boolean;
-  gem?: string; // colore gem al vertice
-  shoulders?: "notch" | "lozenge";
-  shoulderColor?: string;
-  veins?: string; // venature agli angoli
-  band?: { css: string; wide?: boolean; glow?: string }; // fascia diagonale
-  glints?: boolean; // riflessi puntiformi lungo il bordo
+  medalRing?: string;
   seqStars?: boolean;
   popMedal?: boolean;
+  glints?: boolean;
+  sparks?: boolean;
 }
 
 const DESIGNS: Record<number, Design> = {
+  // 1 · BRONZO — più opaco e semplice.
   1: {
     label: "Bronzo",
     stars: 1,
-    border: "linear-gradient(155deg,#E9B481 0%,#B87333 45%,#6E4320 100%)",
-    filet: "#e9b481",
-    pattern:
-      "repeating-linear-gradient(45deg, rgba(0,0,0,0.10) 0 10px, rgba(255,255,255,0.04) 10px 20px), linear-gradient(160deg,#8a552c,#5a3719)",
+    metalLight: "#e9c9a8",
+    metal: "#a9662f",
+    surface: "linear-gradient(160deg,#f4e7d6 0%,#e7d3bb 100%)",
+    vein: "#c9ad86",
+    ribbon: "linear-gradient(180deg,#d19a63 0%,#8a5626 52%,#c88b4e 100%)",
     glowClass: "shield-glow-bronze",
-    windowRing: "ring-2 ring-[#e9b481]/70",
+    windowMatte: "linear-gradient(160deg,#efe0cd,#e2ceb4)",
+    windowRing: "ring-1 ring-[#a9662f]/40",
+    textMain: "text-[#4a2e14]",
+    textMeta: "text-[#7a5533]",
+    tick: "#a9662f",
     medalBg: "linear-gradient(145deg,#f0c08a,#b87333 60%,#7a4a22)",
     medalText: "text-[#3a2410]",
-    plate: "bg-[#5a3719]/85 text-[#f5ddc6] ring-1 ring-[#e9b481]/50",
-    meta: "text-[#f0d3b5]/80",
     popMedal: true,
-    shoulders: "notch",
-    shoulderColor: "#e9b481",
   },
+  // 2 · ARGENTO — effetto metallico più freddo, riflesso animato.
   2: {
     label: "Argento",
     stars: 2,
-    border: "linear-gradient(155deg,#F2F6F9 0%,#A6AFB8 45%,#5C6673 100%)",
-    filet: "#eef4f8",
-    filet2: "#66d0e0",
-    pattern:
-      "radial-gradient(circle at 50% 18%, rgba(255,255,255,0.22), transparent 55%), repeating-linear-gradient(120deg, rgba(255,255,255,0.06) 0 5px, transparent 5px 13px), linear-gradient(165deg,#727c86,#39414c)",
+    metalLight: "#f2f7fa",
+    metal: "#7f8b96",
+    surface: "linear-gradient(160deg,#f7f9fb 0%,#e4e9ee 100%)",
+    vein: "#bcc6cf",
+    ribbon: "linear-gradient(180deg,#f2f9fd 0%,#8fa0ac 52%,#eef6fb 100%)",
+    ribbonSweep: true,
     glowClass: "shield-glow-silver",
-    windowRing: "ring-2 ring-white/70",
+    windowMatte: "linear-gradient(160deg,#eef2f6,#dde4ea)",
+    windowRing: "ring-1 ring-[#7f8b96]/40",
+    textMain: "text-[#33404d]",
+    textMeta: "text-[#5b6673]",
+    tick: "#7f8b96",
     medalBg: "linear-gradient(145deg,#ffffff,#c3cdd6 55%,#7c8794)",
     medalText: "text-[#33404d]",
-    plate: "bg-[#39414c]/85 text-white ring-1 ring-white/40",
-    meta: "text-white/75",
-    sweep: true,
-    shoulders: "lozenge",
-    shoulderColor: "#cfe9ef",
   },
+  // 3 · VERDE IDOLO — nastro smeraldo, glow pulsante, stelle in sequenza.
   3: {
     label: "Verde",
     stars: 3,
-    border: "linear-gradient(155deg,#3fae72 0%,#123d28 50%,#0a2015 100%)",
-    filet: "#3fae72",
-    pattern:
-      "radial-gradient(circle at 50% 30%, rgba(63,174,114,0.40), transparent 60%), repeating-linear-gradient(60deg, rgba(255,255,255,0.045) 0 4px, transparent 4px 12px), repeating-linear-gradient(-60deg, rgba(0,0,0,0.10) 0 5px, transparent 5px 15px), linear-gradient(165deg,#124a30,#08160e)",
-    spinLayer:
-      "conic-gradient(from 0deg at 50% 42%, rgba(63,174,114,0.30) 0deg, transparent 40deg, rgba(63,174,114,0.30) 90deg, transparent 130deg, rgba(63,174,114,0.30) 180deg, transparent 220deg, rgba(63,174,114,0.30) 270deg, transparent 310deg, rgba(63,174,114,0.30) 360deg)",
-    spinClass: "shield-spin",
+    metalLight: "#8fe3b0",
+    metal: "#2f7d55",
+    surface: "linear-gradient(160deg,#eef7f1 0%,#d9ecdf 100%)",
+    vein: "#a7cfb7",
+    ribbon: "linear-gradient(180deg,#7ee0a8 0%,#186e42 52%,#7ee0a8 100%)",
+    ribbonSweep: true,
     glowClass: "shield-glow-green",
-    windowRing: "ring-2 ring-[#3fae72]/80",
+    windowMatte: "linear-gradient(160deg,#e6f2ea,#d2e8db)",
+    windowRing: "ring-1 ring-[#2f7d55]/45",
+    textMain: "text-[#123d28]",
+    textMeta: "text-[#2f6b4a]",
+    tick: "#2f7d55",
     medalBg: "linear-gradient(145deg,#7ee0a8,#2f7d55 55%,#123d28)",
     medalText: "text-[#062015]",
-    plate: "bg-[#0a2015]/88 text-[#d8f3e3] ring-1 ring-[#3fae72]/60",
-    meta: "text-[#bfe6cf]/80",
     seqStars: true,
-    gem: "#3fae72",
-    veins: "#3fae72",
-    band: { css: "linear-gradient(90deg,#0a2015,#3fae72,#0a2015)" },
   },
+  // 4 · LEGGENDA — marmo dorato, nastro bicolore olografico, shimmer, riflessi.
   4: {
     label: "Leggenda",
     stars: 0,
-    border:
-      "linear-gradient(120deg,#123d28,#d4af37 20%,#2f7d55 40%,#f4e3a0 60%,#123d28 80%,#d4af37 100%)",
-    borderClass: "shield-holo",
-    filet: "#f4e3a0",
-    pattern:
-      "repeating-conic-gradient(from 0deg at 50% 40%, rgba(255,255,255,0.05) 0deg 5deg, transparent 5deg 17deg), radial-gradient(circle at 30% 20%, rgba(212,175,55,0.30), transparent 45%), radial-gradient(circle at 72% 28%, rgba(47,125,85,0.36), transparent 50%), radial-gradient(circle at 50% 82%, rgba(212,175,55,0.24), transparent 55%), linear-gradient(165deg,#0d3121,#02100a 72%)",
-    spinLayer:
-      "conic-gradient(from 0deg at 50% 45%, rgba(212,175,55,0.25) 0deg, transparent 30deg, rgba(47,125,85,0.28) 60deg, transparent 90deg, rgba(212,175,55,0.25) 120deg, transparent 150deg, rgba(47,125,85,0.28) 180deg, transparent 210deg, rgba(212,175,55,0.25) 240deg, transparent 270deg, rgba(47,125,85,0.28) 300deg, transparent 330deg, rgba(212,175,55,0.25) 360deg)",
-    spinClass: "shield-spin-rev",
+    metalLight: "#f9efc6",
+    metal: "#c99f2a",
+    surface: "linear-gradient(160deg,#f9f3e0 0%,#efe3c2 55%,#f5ecd0 100%)",
+    vein: "#dcc78d",
+    ribbon: "linear-gradient(110deg,#f7ecc0 0%,#c9a12a 32%,#2f7d55 55%,#d4af37 78%,#f7ecc0 100%)",
+    ribbonHolo: true,
+    ribbonSweep: true,
+    surfaceShimmer: true,
     glowClass: "shield-glow-legend",
-    windowRing: "ring-2 ring-oro/80",
-    medalBg: "linear-gradient(145deg,#f4e3a0,#d4af37 50%,#8f6f16)",
-    medalText: "text-[#2a2107]",
-    plate: "bg-[#02100a]/90 text-oro ring-1 ring-oro/60",
-    meta: "text-[#f4e3a0]/80",
-    sparks: true,
-    gem: "#f4e3a0",
-    veins: "#f4e3a0",
-    band: { css: "linear-gradient(90deg,#123d28,#d4af37,#2f7d55,#f4e3a0,#123d28)", wide: true, glow: "rgba(212,175,55,0.7)" },
+    windowMatte: "linear-gradient(160deg,#f3ead1,#e8d9b4)",
+    windowRing: "ring-1 ring-[#c99f2a]/50",
+    textMain: "text-[#5a4410]",
+    textMeta: "text-[#8a6a1a]",
+    tick: "#c99f2a",
+    medalBg: "radial-gradient(circle at 50% 38%,#123d28,#02100a)",
+    medalText: "text-oro",
+    medalRing: "ring-[#e9cd6e]",
     glints: true,
+    sparks: true,
   },
 };
 
-function LevelMedal({ d, s }: { d: Design; s: (typeof S)[Size] }) {
+// Venature marmo: poche linee ondulate chiare, appena percettibili.
+function MarbleVeins({ color }: { color: string }) {
   return (
-    <span
-      className={`absolute left-1/2 top-[1.5%] z-20 flex -translate-x-1/2 items-center justify-center rounded-full shadow-md ring-2 ring-white/70 ${d.popMedal ? "idol-pop" : ""}`}
-      style={{ width: s.medal, height: s.medal, background: d.medalBg }}
-      title={`Idolo ${d.label}`}
-    >
-      {d.stars === 0 ? (
-        <span className={d.medalText} aria-hidden style={{ fontSize: s.medal * 0.5 }}>
-          ♔
-        </span>
-      ) : (
-        <span className={`flex items-center gap-[1px] ${d.medalText} ${s.star} ${d.seqStars ? "idol-star-seq" : ""}`}>
-          {Array.from({ length: d.stars }).map((_, i) => (
-            <span key={i} aria-hidden>
-              ★
-            </span>
-          ))}
-        </span>
-      )}
-    </span>
-  );
-}
-
-// Tacche (Bronzo) o losanghe (Argento) ai due angoli superiori dello scudo.
-function ShoulderOrnaments({ kind, color }: { kind: "notch" | "lozenge"; color: string }) {
-  const render = (side: "left" | "right") => (
-    <span className={`pointer-events-none absolute top-[10.5%] z-10 ${side === "left" ? "left-[7%]" : "right-[7%]"}`}>
-      {kind === "lozenge" ? (
-        <span className="block h-2 w-2 rotate-45 rounded-[1px] shadow-sm" style={{ background: color }} />
-      ) : (
-        <span className="flex gap-[2px]">
-          <span className="block h-2.5 w-[1.5px] rotate-[18deg] rounded-full" style={{ background: color }} />
-          <span className="block h-2.5 w-[1.5px] rotate-[18deg] rounded-full" style={{ background: color }} />
-        </span>
-      )}
-    </span>
-  );
-  return (
-    <>
-      {render("left")}
-      {render("right")}
-    </>
-  );
-}
-
-// Venature/rami decorativi che si irradiano dal bordo verso l'interno (angoli).
-function CornerVeins({ color }: { color: string }) {
-  const vein = (side: "left" | "right") => (
     <svg
-      className={`pointer-events-none absolute top-[13%] z-10 h-6 w-6 ${side === "left" ? "left-[5%]" : "right-[5%]"}`}
-      viewBox="0 0 24 24"
-      style={{ transform: side === "right" ? "scaleX(-1)" : undefined, opacity: 0.85 }}
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 100 118"
+      preserveAspectRatio="none"
+      style={{ opacity: 0.35 }}
       aria-hidden
     >
-      <g stroke={color} strokeWidth="1" fill="none" strokeLinecap="round">
-        <path d="M2 2 C 8 5, 10 9, 9 15" />
-        <path d="M8 6 L 13 5.5" />
-        <path d="M9 10 L 14.5 10.5" />
-        <path d="M8.5 13 L 12.5 15.5" />
+      <g stroke={color} strokeWidth="0.5" fill="none" strokeLinecap="round">
+        <path d="M-4 22 C 22 16, 40 34, 62 26 S 96 40, 108 30" />
+        <path d="M-4 52 C 26 46, 44 66, 70 56 S 100 66, 110 60" />
+        <path d="M-4 84 C 20 80, 46 94, 68 86 S 98 96, 110 90" />
+        <path d="M28 -4 C 33 26, 24 52, 38 82" opacity="0.7" />
+        <path d="M74 -4 C 70 24, 82 50, 70 84" opacity="0.6" />
       </g>
     </svg>
   );
-  return (
-    <>
-      {vein("left")}
-      {vein("right")}
-    </>
-  );
 }
 
-// Fascia diagonale sull'angolo in alto a destra (clippata dallo scudo).
-function DiagonalBand({ clip, band }: { clip: string; band: NonNullable<Design["band"]> }) {
-  return (
-    <span className="pointer-events-none absolute inset-0 z-10 overflow-hidden" style={{ clipPath: clip }} aria-hidden>
-      <span
-        className="absolute rotate-45"
-        style={{
-          top: band.wide ? "6%" : "8%",
-          right: "-24%",
-          width: "62%",
-          height: band.wide ? "13px" : "6px",
-          background: band.css,
-          boxShadow: band.glow ? `0 0 9px ${band.glow}` : undefined,
-        }}
-      />
-    </span>
-  );
-}
-
-// Riflessi puntiformi che luccicano lungo il perimetro (Leggenda).
-const GLINTS: { top: string; left?: string; right?: string }[] = [
-  { top: "3%", left: "28%" },
-  { top: "3%", left: "70%" },
-  { top: "22%", left: "3%" },
-  { top: "22%", right: "3%" },
-  { top: "45%", left: "1%" },
-  { top: "45%", right: "1%" },
-  { top: "70%", left: "13%" },
-  { top: "70%", right: "13%" },
-  { top: "88%", left: "40%" },
-  { top: "88%", left: "58%" },
-];
-function BorderGlints() {
+function GLINTS() {
+  const pts: { top: string; left?: string; right?: string }[] = [
+    { top: "4%", left: "30%" },
+    { top: "4%", left: "68%" },
+    { top: "22%", left: "3%" },
+    { top: "22%", right: "3%" },
+    { top: "46%", left: "1%" },
+    { top: "46%", right: "1%" },
+    { top: "70%", left: "13%" },
+    { top: "70%", right: "13%" },
+    { top: "88%", left: "42%" },
+    { top: "88%", left: "56%" },
+  ];
   return (
     <>
-      {GLINTS.map((g, i) => (
+      {pts.map((g, i) => (
         <span
           key={i}
-          className="shield-twinkle pointer-events-none absolute z-10 h-[3px] w-[3px] rounded-full"
+          className="shield-twinkle pointer-events-none absolute z-[6] h-[3px] w-[3px] rounded-full"
           style={{
             top: g.top,
             left: g.left,
@@ -261,6 +207,85 @@ function BorderGlints() {
         />
       ))}
     </>
+  );
+}
+
+// Corona regale premium (Leggenda): base ad anello, 5 punte (triangolari alte
+// alternate a rotonde più basse), gemme sferiche sulle punte alte, fascia con
+// rombi, gradiente oro con alta luce/ombra, gemme verdi (bicolore verde-oro).
+export function CrownMark({ uid, size }: { uid: string; size: number }) {
+  const gGold = `cg-${uid}`;
+  const gGem = `cgm-${uid}`;
+  const gems: [number, number][] = [
+    [9, 6.5],
+    [24, 3],
+    [39, 6.5],
+  ];
+  return (
+    <svg
+      width={size}
+      height={size * 0.82}
+      viewBox="0 0 48 39"
+      aria-hidden
+      style={{ filter: "drop-shadow(0 0 1.6px rgba(212,175,55,0.95))", overflow: "visible" }}
+    >
+      <defs>
+        <linearGradient id={gGold} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fdf6de" />
+          <stop offset="34%" stopColor="#eacd6e" />
+          <stop offset="66%" stopColor="#c99f2a" />
+          <stop offset="100%" stopColor="#8a6a14" />
+        </linearGradient>
+        <radialGradient id={gGem} cx="36%" cy="30%" r="78%">
+          <stop offset="0%" stopColor="#c8f6da" />
+          <stop offset="52%" stopColor="#2f9d5f" />
+          <stop offset="100%" stopColor="#0e4529" />
+        </radialGradient>
+      </defs>
+
+      {/* Corpo: 5 punte (tri alte 1/3/5, rotonde basse 2/4), punta centrale più alta */}
+      <path
+        d="M7,26 L9,8 L13,18 Q16.5,11 20,18 L24,4 L28,18 Q31.5,11 35,18 L39,8 L41,26 Z"
+        fill={`url(#${gGold})`}
+        stroke="#7a5a12"
+        strokeWidth="0.7"
+        strokeLinejoin="round"
+      />
+      {/* Alte luci sui bordi interni delle punte (tridimensionalità) */}
+      <path
+        d="M9,9.5 L10.6,17 M24,5.5 L24,17 M39,9.5 L37.4,17"
+        stroke="#fdf6de"
+        strokeWidth="0.6"
+        strokeLinecap="round"
+        opacity="0.55"
+        fill="none"
+      />
+      {/* Fascia/base */}
+      <rect x="6" y="25" width="36" height="9.4" rx="1.7" fill={`url(#${gGold})`} stroke="#7a5a12" strokeWidth="0.7" />
+      {/* Incisioni: piccoli rombi (gemme verdi) sulla fascia */}
+      {[12, 18, 24, 30, 36].map((cx) => (
+        <rect
+          key={cx}
+          x={cx - 1.4}
+          y={28.2}
+          width="2.8"
+          height="2.8"
+          transform={`rotate(45 ${cx} 29.6)`}
+          fill={`url(#${gGem})`}
+          stroke="#0e4529"
+          strokeWidth="0.35"
+        />
+      ))}
+      {/* Rim inferiore in ombra */}
+      <rect x="6" y="32.4" width="36" height="1.5" rx="0.6" fill="#8a6a14" opacity="0.7" />
+      {/* Gemme sferiche sulle punte alte */}
+      {gems.map(([cx, cy], i) => (
+        <g key={i}>
+          <circle cx={cx} cy={cy} r="2.5" fill={`url(#${gGem})`} stroke="#0e4529" strokeWidth="0.4" />
+          <circle cx={cx - 0.85} cy={cy - 0.85} r="0.75" fill="#eafff2" opacity="0.9" />
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -280,15 +305,7 @@ function Sparks() {
   );
 }
 
-export default function IdolShieldCard({
-  player,
-  size = "md",
-  showBack = false,
-}: {
-  player: LeaguePlayer;
-  size?: Size;
-  showBack?: boolean;
-}) {
+export default function IdolShieldCard({ player, size = "md", showBack = false }: { player: LeaguePlayer; size?: Size; showBack?: boolean }) {
   const s = S[size];
   const level = player.idolProgress?.level ?? 1;
   const d = DESIGNS[level] ?? DESIGNS[1];
@@ -300,11 +317,9 @@ export default function IdolShieldCard({
 
   const clipId = `shield-${player.id}`;
   const clip = `url(#${clipId})`;
-  const patternInset = d.filet2 ? "inset-[5px]" : "inset-[3.5px]";
 
   return (
     <div className="relative select-none" style={{ width: s.w, maxWidth: "100%" }}>
-      {/* Definizione della sagoma scudo (scalabile) */}
       <svg className="absolute h-0 w-0" aria-hidden>
         <defs>
           <clipPath id={clipId} clipPathUnits="objectBoundingBox">
@@ -314,82 +329,99 @@ export default function IdolShieldCard({
       </svg>
 
       <div className="relative aspect-[100/118] w-full">
-        {/* Leggenda: scintille orbitanti (fuori dallo scudo) */}
         {d.sparks && <Sparks />}
 
-        {/* Bordo esterno (glow che segue la sagoma) */}
-        <div
-          className={`absolute inset-0 ${d.glowClass} ${d.borderClass ?? ""}`}
-          style={{ background: d.border, clipPath: clip }}
-        />
-        {/* Filettatura principale (doppio bordo) */}
-        <div className="absolute inset-[2px]" style={{ background: d.filet, clipPath: clip }} />
-        {/* Seconda filettatura (Argento) */}
-        {d.filet2 && (
-          <div className="absolute inset-[3.5px]" style={{ background: d.filet2, clipPath: clip }} />
-        )}
-        {/* Pattern di sfondo (indipendente dal contenuto) */}
-        <div className={`absolute ${patternInset} overflow-hidden`} style={{ background: d.pattern, clipPath: clip }}>
-          {d.spinLayer && (
-            <span className={`pointer-events-none absolute inset-[-30%] ${d.spinClass ?? ""}`} style={{ background: d.spinLayer }} aria-hidden />
-          )}
-          {d.sweep && <span className="idol-sweep-band" aria-hidden />}
-        </div>
+        {/* Doppio bordo sottile: linea esterna chiara + intercapedine + linea interna */}
+        <div className={`absolute inset-0 ${d.glowClass}`} style={{ background: d.metalLight, clipPath: clip }} />
+        <div className="absolute inset-[1.5px]" style={{ background: d.surface, clipPath: clip }} />
+        <div className="absolute inset-[3px]" style={{ background: d.metal, clipPath: clip }} />
 
-        {/* Ornamenti di bordo */}
-        {d.shoulders && <ShoulderOrnaments kind={d.shoulders} color={d.shoulderColor ?? "#fff"} />}
-        {d.veins && <CornerVeins color={d.veins} />}
-        {d.band && <DiagonalBand clip={clip} band={d.band} />}
-        {d.glints && <BorderGlints />}
-        {d.gem && (
+        {/* Superficie principale (marmo) */}
+        <div className="absolute inset-[4.5px] overflow-hidden" style={{ background: d.surface, clipPath: clip }}>
+          <MarbleVeins color={d.vein} />
+          {d.surfaceShimmer && <span className="shield-shimmer slow" aria-hidden />}
+
+          {/* Nastro diagonale metallico con bordo inferiore frangiato */}
+          <span className="pointer-events-none absolute left-[-12%] right-[-12%] top-[8%] z-[5] h-[13%] -rotate-[11deg] overflow-hidden">
+            <span
+              className={`absolute inset-0 ${d.ribbonHolo ? "shield-holo" : ""}`}
+              style={{ background: d.ribbon, clipPath: RIBBON_CLIP, backgroundSize: d.ribbonHolo ? "300% 100%" : undefined }}
+            />
+            {d.ribbonSweep && (
+              <span className="absolute inset-0" style={{ clipPath: RIBBON_CLIP }}>
+                <span className="shield-shimmer" aria-hidden />
+              </span>
+            )}
+          </span>
+
+          {/* Divisore orizzontale immagine/testo */}
           <span
-            className="pointer-events-none absolute left-1/2 top-[85%] z-10 h-2.5 w-2.5 -translate-x-1/2 rotate-45 rounded-[2px]"
-            style={{ background: d.gem, boxShadow: `0 0 6px ${d.gem}` }}
+            className="pointer-events-none absolute left-[14%] right-[14%] top-[57%] z-[6] h-px"
+            style={{ background: d.tick, opacity: 0.55 }}
             aria-hidden
           />
-        )}
+        </div>
 
-        {/* Finestra centrale: mostra la maglia/foto PER INTERO (object-contain),
-            centrata, con matte neutro ai margini. Contenuto indipendente dalla
-            cornice; funziona con qualsiasi proporzione di foto caricata. */}
+        {/* Riflessi puntiformi lungo il bordo (Leggenda) */}
+        {d.glints && <GLINTS />}
+
+        {/* Medaglia del livello, centrata sul nastro */}
+        <span
+          className={`absolute left-1/2 top-[6%] z-20 flex -translate-x-1/2 items-center justify-center rounded-full shadow-md ring-2 ${d.medalRing ?? "ring-white/80"} ${d.popMedal ? "idol-pop" : ""}`}
+          style={{ width: s.medal, height: s.medal, background: d.medalBg }}
+          title={`Idolo ${d.label}`}
+        >
+          {d.stars === 0 ? (
+            <CrownMark uid={player.id} size={s.medal * 0.78} />
+          ) : (
+            <span className={`flex items-center gap-[1px] ${d.medalText} ${s.star} ${d.seqStars ? "idol-star-seq" : ""}`}>
+              {Array.from({ length: d.stars }).map((_, i) => (
+                <span key={i} aria-hidden>
+                  ★
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+
+        {/* Finestra immagine (contain, immagine intera) */}
         <div
-          className={`absolute left-[21%] right-[21%] top-[13%] h-[47%] overflow-hidden rounded-[10px] ${d.windowRing}`}
-          style={{ background: "linear-gradient(160deg,#12201a,#0a120d)" }}
+          className={`absolute left-[17%] right-[17%] top-[25%] h-[31%] overflow-hidden rounded-[8px] ${d.windowRing}`}
+          style={{ background: d.windowMatte }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imgSrc} alt={player.name} className="absolute inset-0 h-full w-full object-contain" />
           <span
-            className="absolute left-1 top-1 flex items-center justify-center overflow-hidden rounded-full bg-white/90 shadow ring-1 ring-white"
+            className="absolute left-0.5 top-0.5 flex items-center justify-center overflow-hidden rounded-full bg-white/90 shadow ring-1 ring-white"
             style={{ width: s.crest, height: s.crest }}
           >
             <TeamCrest crestUrl={player.owner?.crestUrl} className="h-full w-full" />
           </span>
-          <span className={`absolute right-1 top-1 rounded font-bold text-white shadow ${ROLE_BADGE[player.role]} ${s.role}`}>
+          <span className={`absolute right-0.5 top-0.5 rounded font-bold text-white shadow ${ROLE_BADGE[player.role]} ${s.role}`}>
             {player.role}
           </span>
         </div>
 
-        {/* Medaglia del livello */}
-        <LevelMedal d={d} s={s} />
-
-        {/* Numero (badge) all'angolo inferiore della finestra */}
+        {/* Numero all'angolo inferiore della finestra */}
         <span
-          className={`absolute left-[18%] top-[54%] z-20 inline-flex items-center justify-center rounded-full font-display font-bold shadow ring-2 ring-white/80 ${s.num}`}
+          className={`absolute left-[22%] top-[49%] z-20 inline-flex items-center justify-center rounded-full font-display font-bold shadow ring-2 ring-white/90 ${s.num}`}
           style={{ background: rare ? "#D4AF37" : "#ffffff", color: "#123D28" }}
         >
           {number}
         </span>
 
-        {/* Targa nome + meta (indipendente dal contenuto) */}
-        <div className="absolute inset-x-[11%] top-[61%] z-10 text-center">
-          <div className={`mx-auto rounded-md px-1.5 py-0.5 font-display font-semibold leading-tight ${d.plate} ${s.name}`}>
-            {rare && <span className="text-[#F4D77A]">★ </span>}
+        {/* Zona testo (sotto il divisore) su superficie chiara */}
+        <div className="absolute inset-x-[13%] top-[60%] z-10 text-center">
+          <div className={`flex items-center justify-center gap-1 font-display font-semibold leading-tight ${d.textMain} ${s.name}`}>
+            {rare && <span className="text-[#B8901F]">★</span>}
+            {/* trattino verticale come separatore minimale accanto al nome */}
+            <span className="inline-block h-3 w-px" style={{ background: d.tick }} aria-hidden />
             <span className="truncate">{player.name}</span>
           </div>
-          <div className={`mt-0.5 truncate font-semibold uppercase tracking-wide ${d.meta} ${s.meta}`}>
+          <div className={`mt-0.5 truncate font-semibold uppercase tracking-wide ${d.textMeta} ${s.meta}`}>
             Idolo {d.label}
           </div>
-          <div className={`truncate ${d.meta} ${s.meta}`}>
+          <div className={`truncate ${d.textMeta} ${s.meta}`}>
             {player.club || "—"} · Q{player.quota} · FM {player.fm.toFixed(1)}
           </div>
         </div>
