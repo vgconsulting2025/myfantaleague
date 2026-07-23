@@ -27,6 +27,7 @@ export default async function Home({
     recentNews,
     freeAgents,
     freeAgentProposals,
+    museum,
   ] = await Promise.all([
     repo.getUserTeam(),
     repo.getStandings(),
@@ -41,6 +42,7 @@ export default async function Home({
     repo.getRecentNews(12),
     repo.getFreeAgents(),
     repo.getFreeAgentProposals(),
+    repo.getMuseumEntries(),
   ]);
 
   // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
@@ -61,6 +63,7 @@ export default async function Home({
       recentNews={recentNews}
       freeAgents={freeAgents}
       freeAgentProposals={freeAgentProposals}
+      museum={museum}
       demoMode={demoMode}
       initialTab={initialTab}
     />

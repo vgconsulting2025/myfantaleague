@@ -18,6 +18,9 @@ import type {
   LeaguePlayer,
   LeagueTeam,
   MatchResult,
+  MuseumEntryInput,
+  MuseumItem,
+  MuseumType,
   PeerVoteItem,
   PlayerWithTeam,
   PresidentStanding,
@@ -171,6 +174,11 @@ export interface LeagueRepository {
   getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null>;
   setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void>;
   executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void>;
+
+  // Museo della lega
+  addMuseumEntry(entry: MuseumEntryInput): Promise<void>;
+  getMuseumEntries(limit?: number): Promise<MuseumItem[]>;
+  getMuseumTopValue(type: MuseumType): Promise<number | null>;
 
   // Rivale storico
   setRival(teamId: string, giornata: number): Promise<void>;

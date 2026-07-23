@@ -13,6 +13,7 @@ import type {
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
+  MuseumItem,
   PeerVoteItem,
   PresidentStanding,
   TradeRecord,
@@ -22,10 +23,11 @@ import Mercato from "./Mercato";
 import Squadra from "./Squadra";
 import Classifica from "./Classifica";
 import Voti from "./Voti";
+import Museo from "./Museo";
 import Configura from "./Configura";
 import BrandMark from "./brand/BrandMark";
 
-type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "voti" | "configura";
+type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "voti" | "museo" | "configura";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "gazzetta", label: "La Gazzetta" },
@@ -33,6 +35,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "squadra", label: "La Mia Squadra" },
   { id: "classifica", label: "Classifica" },
   { id: "voti", label: "Voti" },
+  { id: "museo", label: "Museo" },
   { id: "configura", label: "Configura" },
 ];
 
@@ -50,6 +53,7 @@ interface AppShellProps {
   recentNews: Article[];
   freeAgents: LeaguePlayer[];
   freeAgentProposals: FreeAgentProposalItem[];
+  museum: MuseumItem[];
   demoMode: boolean;
   initialTab?: string;
 }
@@ -68,6 +72,7 @@ export default function AppShell({
   recentNews,
   freeAgents,
   freeAgentProposals,
+  museum,
   demoMode,
   initialTab,
 }: AppShellProps) {
@@ -209,6 +214,7 @@ export default function AppShell({
               userTeam={userTeam}
             />
           )}
+          {tab === "museo" && <Museo entries={museum} />}
           {tab === "configura" && (
             <Configura userTeam={userTeam} config={config} freeAgents={freeAgents} />
           )}

@@ -25,6 +25,13 @@ import {
   derbyArticle,
 } from "@/lib/league/news";
 import { IDOL_LEVEL_META, type IdolLevel } from "@/lib/league/idol";
+import {
+  legendEntry,
+  panchinaEntry,
+  recordScoreEntry,
+  recordMarginEntry,
+  derbyEntry,
+} from "@/lib/league/museum";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -288,6 +295,7 @@ export async function POST() {
         );
         if (ev.toLevel >= 4) {
           await repo.setIdolQuote(ev.teamName, await idolLegendQuote(ev.playerName));
+          await repo.addMuseumEntry(legendEntry(ev.playerName, ev.teamName, giornata.number));
         }
       }
     } catch (e) {
@@ -306,6 +314,14 @@ export async function POST() {
           `Derby! ${d.userTeamName} ${d.userScore.toFixed(1)} - ${d.rivalScore.toFixed(1)} ${d.rivalTeamName}.`,
           "derby",
         );
+        const de = derbyEntry(
+          d.userTeamName,
+          d.rivalTeamName,
+          d.userScore,
+          d.rivalScore,
+          giornata.number,
+        );
+        if (de) await repo.addMuseumEntry(de);
       }
     } catch (e) {
       console.error("[/api/simulate] derby", e);
@@ -323,6 +339,23 @@ export async function POST() {
       ratings = generateDemoCoachRatings(perfByTeam, teams);
     }
     await repo.saveCoachRatings(giornata.number, ratings);
+
+    // Museo della lega: record di giornata (punteggio più alto, scarto più ampio)
+    // e Panchina d'oro (miglior allenatore), registrati solo se notevoli.
+    try {
+      const g = giornata.number;
+      const scoreEntry = recordScoreEntry(results, g, await repo.getMuseumTopValue("record_score"));
+      if (scoreEntry) await repo.addMuseumEntry(scoreEntry);
+      const marginEntry = recordMarginEntry(results, g, await repo.getMuseumTopValue("record_margin"));
+      if (marginEntry) await repo.addMuseumEntry(marginEntry);
+      const panchina = panchinaEntry(
+        ratings.map((r) => ({ president: r.president, teamName: r.teamName, score: r.score })),
+        g,
+      );
+      if (panchina) await repo.addMuseumEntry(panchina);
+    } catch (e) {
+      console.error("[/api/simulate] museo", e);
+    }
 
     // Voti simulati tra presidenti (per popolare la bacheca).
     const peerVotes = generateSimulatedPeerVotes(

@@ -204,6 +204,35 @@ export interface FlashItem {
   kind: string;
 }
 
+// Museo della lega: traguardi storici.
+export type MuseumType =
+  | "leggenda"
+  | "panchina"
+  | "record_score"
+  | "record_margin"
+  | "trade"
+  | "derby";
+
+export interface MuseumEntryInput {
+  type: MuseumType;
+  title: string;
+  subtitle?: string | null;
+  detail?: string | null;
+  giornata?: number | null;
+  value?: number | null;
+}
+
+export interface MuseumItem {
+  id: string;
+  createdAt: string;
+  type: MuseumType;
+  title: string;
+  subtitle: string | null;
+  detail: string | null;
+  giornata: number | null;
+  value: number | null;
+}
+
 // Proposta grezza restituita dall'AgentE (prima della validazione).
 export interface TradeProposal {
   otherTeam: string;

@@ -13,6 +13,9 @@ import type {
   LeaguePlayer,
   LeagueTeam,
   MatchResult,
+  MuseumEntryInput,
+  MuseumItem,
+  MuseumType,
   RivalRecord,
   Role,
   TeamIdentity,
@@ -642,6 +645,38 @@ export class PrismaLeagueRepository implements LeagueRepository {
       ratings,
       votes,
     );
+  }
+
+  async addMuseumEntry(entry: MuseumEntryInput): Promise<void> {
+    await prisma.museumEntry.create({
+      data: {
+        type: entry.type,
+        title: entry.title,
+        subtitle: entry.subtitle ?? null,
+        detail: entry.detail ?? null,
+        giornata: entry.giornata ?? null,
+        value: entry.value ?? null,
+      },
+    });
+  }
+
+  async getMuseumEntries(limit = 200): Promise<MuseumItem[]> {
+    const rows = await prisma.museumEntry.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+    return rows.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt.toISOString(),
+      type: r.type as MuseumType,
+      title: r.title,
+      subtitle: r.subtitle,
+      detail: r.detail,
+      giornata: r.giornata,
+      value: r.value,
+    }));
+  }
+
+  async getMuseumTopValue(type: MuseumType): Promise<number | null> {
+    const agg = await prisma.museumEntry.aggregate({ where: { type }, _max: { value: true } });
+    return agg._max.value ?? null;
   }
 
   async setRival(teamId: string, giornata: number): Promise<void> {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLeagueRepository } from "@/lib/league/repository";
 import { outcomeSquadTrade } from "@/lib/league/news";
+import { tradeEntry } from "@/lib/league/museum";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
         `UFFICIALE — ${userTeam.name} cede ${give} a ${other.name} e accoglie ${receive}. L'Agente incassa la commissione.`,
         "mercato",
       );
+      await repo.addMuseumEntry(tradeEntry(userTeam.name, other.name, give, receive));
     } else {
       await repo.recordTrade({
         status: "rejected",

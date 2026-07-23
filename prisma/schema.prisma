@@ -202,3 +202,19 @@ model FlashNews {
   text      String
   kind      String   @default("mercato") // mercato | generic
 }
+
+// Museo della lega: traguardi storici registrati man mano che si verificano
+// (leggende, panchine d'oro, record di giornata, scambi storici, derby memorabili).
+model MuseumEntry {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  type      String // leggenda | panchina | record_score | record_margin | trade | derby
+  title     String
+  subtitle  String? // squadra/contesto
+  detail    String? // descrizione
+  giornata  Int? // giornata in cui è avvenuto
+  value     Float? // per i record (punteggio/scarto)
+
+  @@index([type])
+  @@index([createdAt])
+}
