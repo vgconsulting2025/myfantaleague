@@ -9,11 +9,13 @@
 import type {
   Article,
   ArticleInput,
+  ChallengeItem,
   CoachRatingItem,
   Edition,
   FlashItem,
   FreeAgentProposalItem,
   Giornata,
+  OwnedSkinItem,
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
@@ -174,6 +176,16 @@ export interface LeagueRepository {
   getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null>;
   setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void>;
   executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void>;
+
+  // Fanta Coins / Sfide / Bustine
+  getUserCoins(): Promise<number>;
+  getChallenges(): Promise<ChallengeItem[]>;
+  completeChallenge(key: string): Promise<number>; // ritorna i coins accreditati (0 se nessuna)
+  renewChallenges(giornata: number): Promise<void>;
+  getOwnedSkins(): Promise<OwnedSkinItem[]>;
+  openPack(): Promise<{ skinKey: string; coins: number }>;
+  applySkin(playerId: string, skinKey: string | null): Promise<void>;
+  buyCoins(pack: string): Promise<{ coins: number }>;
 
   // Museo della lega
   addMuseumEntry(entry: MuseumEntryInput): Promise<void>;

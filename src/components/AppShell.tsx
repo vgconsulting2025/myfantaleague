@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Article,
+  ChallengeItem,
   CoachRatingItem,
   Edition,
   EnrichedProposal,
@@ -14,6 +15,7 @@ import type {
   LeaguePlayer,
   LeagueTeam,
   MuseumItem,
+  OwnedSkinItem,
   PeerVoteItem,
   PresidentStanding,
   TradeRecord,
@@ -24,10 +26,19 @@ import Squadra from "./Squadra";
 import Classifica from "./Classifica";
 import Voti from "./Voti";
 import Museo from "./Museo";
+import Bustine from "./Bustine";
 import Configura from "./Configura";
 import BrandMark from "./brand/BrandMark";
 
-type TabId = "gazzetta" | "mercato" | "squadra" | "classifica" | "voti" | "museo" | "configura";
+type TabId =
+  | "gazzetta"
+  | "mercato"
+  | "squadra"
+  | "classifica"
+  | "voti"
+  | "museo"
+  | "bustine"
+  | "configura";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "gazzetta", label: "La Gazzetta" },
@@ -36,6 +47,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "classifica", label: "Classifica" },
   { id: "voti", label: "Voti" },
   { id: "museo", label: "Museo" },
+  { id: "bustine", label: "Bustine" },
   { id: "configura", label: "Configura" },
 ];
 
@@ -54,6 +66,9 @@ interface AppShellProps {
   freeAgents: LeaguePlayer[];
   freeAgentProposals: FreeAgentProposalItem[];
   museum: MuseumItem[];
+  coins: number;
+  challenges: ChallengeItem[];
+  ownedSkins: OwnedSkinItem[];
   demoMode: boolean;
   initialTab?: string;
 }
@@ -73,6 +88,9 @@ export default function AppShell({
   freeAgents,
   freeAgentProposals,
   museum,
+  coins,
+  challenges,
+  ownedSkins,
   demoMode,
   initialTab,
 }: AppShellProps) {
@@ -140,6 +158,16 @@ export default function AppShell({
               );
             })}
           </nav>
+
+          {/* Saldo Fanta Coins (fisso nell'header) */}
+          <button
+            onClick={() => setTab("bustine")}
+            title="Fanta Coins — apri Bustine"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-oro ring-1 ring-oro/40 transition hover:bg-white/20"
+          >
+            <span aria-hidden>🪙</span>
+            <span className="tabular-nums">{coins}</span>
+          </button>
 
           <button
             onClick={simula}
@@ -215,6 +243,15 @@ export default function AppShell({
             />
           )}
           {tab === "museo" && <Museo entries={museum} />}
+          {tab === "bustine" && (
+            <Bustine
+              userTeam={userTeam}
+              coins={coins}
+              challenges={challenges}
+              ownedSkins={ownedSkins}
+              acquistoAbilitato={config.acquistoCoinsAbilitato}
+            />
+          )}
           {tab === "configura" && (
             <Configura userTeam={userTeam} config={config} freeAgents={freeAgents} />
           )}

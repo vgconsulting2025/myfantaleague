@@ -6,6 +6,7 @@
 import Link from "next/link";
 import type { LeaguePlayer } from "@/lib/league/types";
 import { resolvePlayerImage, resolveTeamColors, displayNumber } from "@/lib/league/identity";
+import { skinByKey } from "@/lib/league/skins";
 import { ROLE_BADGE } from "@/components/theme";
 import TeamCrest from "@/components/brand/TeamCrest";
 import IdolShieldCard from "./IdolShieldCard";
@@ -44,9 +45,15 @@ export default function Figurina({
   const imgSrc = usingBack ? player.owner!.jerseyBackUrl! : resolved.src;
   const isPhoto = resolved.mode === "photo";
 
-  const frameBg = rare
-    ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#B8901F 60%,#F3DE93 100%)"
-    : `linear-gradient(150deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
+  // Skin cosmetica (solo figurine non-idolo): sovrascrive la cornice e aggiunge
+  // un pattern/particelle. Puramente estetica.
+  const skin = !player.isIdol && player.skinKey ? skinByKey(player.skinKey) : null;
+
+  const frameBg = skin
+    ? skin.frame
+    : rare
+      ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#B8901F 60%,#F3DE93 100%)"
+      : `linear-gradient(150deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
 
   const card = player.isIdol ? (
     <IdolShieldCard player={player} size={size} showBack={showBack} />
@@ -69,6 +76,19 @@ export default function Figurina({
               alt={player.name}
               className={`absolute inset-0 h-full w-full ${isPhoto ? "object-contain" : "object-cover"}`}
             />
+
+            {/* Skin cosmetica: pattern + particelle */}
+            {skin?.overlay && (
+              <span className="pointer-events-none absolute inset-0" style={{ background: skin.overlay }} aria-hidden />
+            )}
+            {skin?.particles && (
+              <span aria-hidden>
+                <span className="shield-twinkle pointer-events-none absolute left-[18%] top-[22%] h-1 w-1 rounded-full bg-white/90" />
+                <span className="shield-twinkle pointer-events-none absolute right-[22%] top-[38%] h-1 w-1 rounded-full bg-white/80" style={{ animationDelay: "0.5s" }} />
+                <span className="shield-twinkle pointer-events-none absolute left-[40%] top-[62%] h-1 w-1 rounded-full bg-white/80" style={{ animationDelay: "1s" }} />
+                <span className="shield-twinkle pointer-events-none absolute bottom-[20%] right-[30%] h-1 w-1 rounded-full bg-white/90" style={{ animationDelay: "0.8s" }} />
+              </span>
+            )}
 
             {/* Stemma squadra */}
             <span

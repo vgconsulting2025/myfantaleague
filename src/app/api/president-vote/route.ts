@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     const user = await repo.getUserTeam();
     const res = await repo.addPeerVote(user.name, toTeam, score, comment);
     if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
+    // Sfida: vota un allenatore.
+    await repo.completeChallenge("vota_allenatore").catch(() => {});
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[/api/president-vote]", err);

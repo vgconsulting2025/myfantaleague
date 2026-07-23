@@ -48,6 +48,7 @@ export async function POST() {
       const proposals = validateProposals(demo, userTeam, others);
       if (proposals.length === 0) throw new Error("Nessuna proposta generata");
       await announce(repo, proposals, userTeam.name);
+      await repo.completeChallenge("chiama_agente").catch(() => {});
       return NextResponse.json({ proposals, demo: true });
     }
 
@@ -73,6 +74,7 @@ Proponi 3 scambi (1 giocatore per 1 giocatore, stesso ruolo o valore simile) che
     if (proposals.length === 0) throw new Error("Nessuna proposta valida");
 
     await announce(repo, proposals, userTeam.name);
+    await repo.completeChallenge("chiama_agente").catch(() => {});
     return NextResponse.json({ proposals, demo: false });
   } catch (err) {
     console.error("[/api/trades]", err);

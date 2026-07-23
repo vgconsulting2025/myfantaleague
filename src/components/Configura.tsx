@@ -493,6 +493,7 @@ function GazzettaConfigPanel({
   const [name, setName] = useState(config.gazzettaName);
   const [enabled, setEnabled] = useState(config.freeAgentEnabled);
   const [max, setMax] = useState(String(config.freeAgentMaxPerWeek));
+  const [acquisto, setAcquisto] = useState(config.acquistoCoinsAbilitato);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -507,6 +508,7 @@ function GazzettaConfigPanel({
           gazzettaName: name,
           freeAgentEnabled: enabled,
           freeAgentMaxPerWeek: Number(max),
+          acquistoCoinsAbilitato: acquisto,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -566,6 +568,21 @@ function GazzettaConfigPanel({
         />
         <span className="font-medium text-slate-700">
           Abilita le proposte automatiche dell&apos;Agente sugli svincolati
+        </span>
+      </label>
+
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={acquisto}
+          onChange={(e) => setAcquisto(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-verde focus:ring-verde"
+        />
+        <span className="font-medium text-slate-700">
+          Abilita l&apos;acquisto di Fanta Coins con denaro reale
+          <span className="ml-1 text-xs font-normal text-slate-400">
+            (ACQUISTO_COINS_ABILITATO — default disattivato)
+          </span>
         </span>
       </label>
 

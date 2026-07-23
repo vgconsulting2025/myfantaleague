@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     }
 
     await repo.setIdol(playerId, latestNumber);
+    await repo.completeChallenge("designa_idolo").catch(() => {});
     await repo.addNewsArticle(announceIdol(userTeam.name, player.name));
     await repo.pushFlashNews(
       `Nuovo idolo: ${player.name} è l'eroe designato del ${userTeam.name}.`,

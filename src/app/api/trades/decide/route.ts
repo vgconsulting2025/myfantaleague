@@ -78,6 +78,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Sfida: accetta o rifiuta una proposta di scambio.
+    await repo.completeChallenge("decidi_scambio").catch(() => {});
+
     // Articolo di esito sulla Gazzetta.
     await repo.addNewsArticle(outcomeSquadTrade(userTeam.name, other.name, give, receive, accepted));
 

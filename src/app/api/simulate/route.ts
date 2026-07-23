@@ -357,6 +357,14 @@ export async function POST() {
       console.error("[/api/simulate] museo", e);
     }
 
+    // Sfide giornaliere: completa "Simula una giornata" e rinnova il set.
+    try {
+      await repo.completeChallenge("simula_giornata");
+      await repo.renewChallenges(giornata.number);
+    } catch (e) {
+      console.error("[/api/simulate] sfide", e);
+    }
+
     // Voti simulati tra presidenti (per popolare la bacheca).
     const peerVotes = generateSimulatedPeerVotes(
       teams.map((t) => ({ name: t.name, president: t.president, isUser: t.isUser })),

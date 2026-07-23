@@ -4,11 +4,13 @@ import { prisma } from "@/lib/db";
 import type {
   Article,
   ArticleInput,
+  ChallengeItem,
   Edition,
   FlashItem,
   FreeAgentProposalItem,
   Giornata,
   IdolProgress,
+  OwnedSkinItem,
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
@@ -24,6 +26,8 @@ import type {
 } from "./types";
 import { nextIdolCounters, idolLevel } from "./idol";
 import { applyDerbyResult } from "./rival";
+import { generateChallenges } from "./challenges";
+import { pickSkin, PACK_COST, coinPackByKey } from "./skins";
 import type {
   LeagueRepository,
   NewTrade,
@@ -51,6 +55,7 @@ type PlayerRow = {
   fm: number;
   imageUrl?: string | null;
   number?: number | null;
+  skinKey?: string | null;
 };
 type TeamRow = {
   id: string;
@@ -117,6 +122,7 @@ function mapPlayer(
     owner,
     isIdol: idol?.isIdol ?? false,
     idolProgress: idol?.progress ?? null,
+    skinKey: p.skinKey ?? null,
   };
 }
 
@@ -406,14 +412,22 @@ export class PrismaLeagueRepository implements LeagueRepository {
       gazzettaName: c.gazzettaName,
       freeAgentEnabled: c.freeAgentEnabled,
       freeAgentMaxPerWeek: c.freeAgentMaxPerWeek,
+      acquistoCoinsAbilitato: c.acquistoCoinsAbilitato,
     };
   }
 
   async updateConfig(patch: Partial<LeagueConfig>): Promise<LeagueConfig> {
-    const data: { gazzettaName?: string; freeAgentEnabled?: boolean; freeAgentMaxPerWeek?: number } = {};
+    const data: {
+      gazzettaName?: string;
+      freeAgentEnabled?: boolean;
+      freeAgentMaxPerWeek?: number;
+      acquistoCoinsAbilitato?: boolean;
+    } = {};
     if (patch.gazzettaName !== undefined) data.gazzettaName = patch.gazzettaName;
     if (patch.freeAgentEnabled !== undefined) data.freeAgentEnabled = patch.freeAgentEnabled;
     if (patch.freeAgentMaxPerWeek !== undefined) data.freeAgentMaxPerWeek = patch.freeAgentMaxPerWeek;
+    if (patch.acquistoCoinsAbilitato !== undefined)
+      data.acquistoCoinsAbilitato = patch.acquistoCoinsAbilitato;
     const c = await prisma.leagueConfig.upsert({
       where: { id: "league" },
       create: { id: "league", ...data },
@@ -423,6 +437,7 @@ export class PrismaLeagueRepository implements LeagueRepository {
       gazzettaName: c.gazzettaName,
       freeAgentEnabled: c.freeAgentEnabled,
       freeAgentMaxPerWeek: c.freeAgentMaxPerWeek,
+      acquistoCoinsAbilitato: c.acquistoCoinsAbilitato,
     };
   }
 
@@ -645,6 +660,111 @@ export class PrismaLeagueRepository implements LeagueRepository {
       ratings,
       votes,
     );
+  }
+
+  private async requireUserTeam() {
+    const t = await prisma.team.findFirst({ where: { isUser: true } });
+    if (!t) throw new Error("Nessuna squadra utente.");
+    return t;
+  }
+
+  async getUserCoins(): Promise<number> {
+    const t = await prisma.team.findFirst({ where: { isUser: true }, select: { coins: true } });
+    return t?.coins ?? 0;
+  }
+
+  async getChallenges(): Promise<ChallengeItem[]> {
+    const team = await this.requireUserTeam();
+    let rows = await prisma.challenge.findMany({ where: { teamId: team.id }, orderBy: { id: "asc" } });
+    if (rows.length === 0) {
+      const latest = await prisma.giornata.findFirst({ orderBy: { number: "desc" } });
+      await this.renewChallenges(latest?.number ?? 0);
+      rows = await prisma.challenge.findMany({ where: { teamId: team.id }, orderBy: { id: "asc" } });
+    }
+    return rows.map((r) => ({
+      id: r.id,
+      key: r.key,
+      description: r.description,
+      reward: r.reward,
+      completed: r.completed,
+    }));
+  }
+
+  async completeChallenge(key: string): Promise<number> {
+    const team = await this.requireUserTeam();
+    const ch = await prisma.challenge.findFirst({ where: { teamId: team.id, key, completed: false } });
+    if (!ch) return 0;
+    await prisma.$transaction([
+      prisma.challenge.update({ where: { id: ch.id }, data: { completed: true } }),
+      prisma.team.update({ where: { id: team.id }, data: { coins: { increment: ch.reward } } }),
+    ]);
+    return ch.reward;
+  }
+
+  async renewChallenges(giornata: number): Promise<void> {
+    const team = await this.requireUserTeam();
+    const defs = generateChallenges(giornata, 3);
+    await prisma.$transaction([
+      prisma.challenge.deleteMany({ where: { teamId: team.id } }),
+      prisma.challenge.createMany({
+        data: defs.map((d) => ({
+          teamId: team.id,
+          key: d.key,
+          description: d.description,
+          reward: d.reward,
+          giornata,
+        })),
+      }),
+    ]);
+  }
+
+  async getOwnedSkins(): Promise<OwnedSkinItem[]> {
+    const team = await this.requireUserTeam();
+    const grouped = await prisma.ownedSkin.groupBy({
+      by: ["skinKey"],
+      where: { teamId: team.id },
+      _count: { skinKey: true },
+    });
+    return grouped.map((g) => ({ skinKey: g.skinKey, count: g._count.skinKey }));
+  }
+
+  async openPack(): Promise<{ skinKey: string; coins: number }> {
+    const team = await this.requireUserTeam();
+    if (team.coins < PACK_COST) throw new Error("Fanta Coins insufficienti per aprire una bustina.");
+    const skin = pickSkin();
+    const updated = await prisma.$transaction(async (tx) => {
+      const t = await tx.team.update({
+        where: { id: team.id },
+        data: { coins: { decrement: PACK_COST } },
+      });
+      await tx.ownedSkin.create({ data: { teamId: team.id, skinKey: skin.key } });
+      return t;
+    });
+    return { skinKey: skin.key, coins: updated.coins };
+  }
+
+  async applySkin(playerId: string, skinKey: string | null): Promise<void> {
+    const team = await this.requireUserTeam();
+    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    if (!player || player.teamId !== team.id) throw new Error("Giocatore non della tua squadra.");
+    if (team.idolPlayerId === playerId) throw new Error("Non puoi applicare skin all'idolo.");
+    if (skinKey) {
+      const owned = await prisma.ownedSkin.findFirst({ where: { teamId: team.id, skinKey } });
+      if (!owned) throw new Error("Skin non posseduta.");
+    }
+    await prisma.player.update({ where: { id: playerId }, data: { skinKey } });
+  }
+
+  async buyCoins(pack: string): Promise<{ coins: number }> {
+    const team = await this.requireUserTeam();
+    const p = coinPackByKey(pack);
+    if (!p) throw new Error("Pacchetto non valido.");
+    // Nessun pagamento reale: accredito segnaposto (usato solo se il flag è ON).
+    const t = await prisma.team.update({
+      where: { id: team.id },
+      data: { coins: { increment: p.coins } },
+    });
+    return { coins: t.coins };
   }
 
   async addMuseumEntry(entry: MuseumEntryInput): Promise<void> {

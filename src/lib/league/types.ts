@@ -37,6 +37,7 @@ export interface LeaguePlayer {
   owner?: TeamIdentity; // identità della squadra proprietaria (per figurina)
   isIdol?: boolean; // true se è l'idolo designato della propria squadra
   idolProgress?: IdolProgress | null; // valorizzato solo sul giocatore idolo
+  skinKey?: string | null; // skin cosmetica applicata (solo figurine non-idolo)
 }
 
 // Storico degli scontri diretti (derby) contro il rivale corrente.
@@ -153,6 +154,21 @@ export interface LeagueConfig {
   gazzettaName: string;
   freeAgentEnabled: boolean;
   freeAgentMaxPerWeek: number;
+  acquistoCoinsAbilitato: boolean; // feature flag acquisto coins con denaro reale
+}
+
+// Sfida giornaliera e skin possedute (Fanta Coins / Bustine).
+export interface ChallengeItem {
+  id: string;
+  key: string;
+  description: string;
+  reward: number;
+  completed: boolean;
+}
+
+export interface OwnedSkinItem {
+  skinKey: string;
+  count: number;
 }
 
 export type FreeAgentStatus = "pending" | "accepted" | "rejected";

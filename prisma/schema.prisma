@@ -43,6 +43,10 @@ model Team {
   rivalPointsFor     Float @default(0) // punteggio totale della squadra nei derby
   rivalPointsAgainst Float @default(0) // punteggio totale del rivale nei derby
   rivalDerbies       Int   @default(0) // numero di derby giocati
+  // Fanta Coins (valuta virtuale interna) + inventario/sfide.
+  coins       Int         @default(100)
+  challenges  Challenge[]
+  ownedSkins  OwnedSkin[]
 }
 
 model Player {
@@ -54,6 +58,7 @@ model Player {
   fm       Float
   imageUrl String? // immagine personalizzata caricata dall'utente (file statico)
   number   Int? // numero di maglia (editabile; default automatico 1-99)
+  skinKey  String? // skin cosmetica applicata (solo figurine non-idolo)
   team     Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId   String? // null = giocatore svincolato
 
@@ -155,10 +160,36 @@ model Article {
 
 // Configurazione della lega (singleton, id = "league").
 model LeagueConfig {
-  id                  String  @id @default("league")
-  gazzettaName        String  @default("MyFantaGazzetta")
-  freeAgentEnabled    Boolean @default(true)
-  freeAgentMaxPerWeek Int     @default(2)
+  id                     String  @id @default("league")
+  gazzettaName           String  @default("MyFantaGazzetta")
+  freeAgentEnabled       Boolean @default(true)
+  freeAgentMaxPerWeek    Int     @default(2)
+  acquistoCoinsAbilitato Boolean @default(false) // acquisto coins con denaro reale (feature flag)
+}
+
+// Sfida giornaliera: si rinnova a ogni giornata simulata.
+model Challenge {
+  id          String  @id @default(cuid())
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId      String
+  key         String // tipo di sfida (simula_giornata, designa_idolo, ...)
+  description String
+  reward      Int // Fanta Coins alla riuscita
+  giornata    Int // giornata di validità
+  completed   Boolean @default(false)
+
+  @@index([teamId])
+}
+
+// Skin cosmetica posseduta (ottenuta aprendo una bustina).
+model OwnedSkin {
+  id        String   @id @default(cuid())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  skinKey   String
+  createdAt DateTime @default(now())
+
+  @@index([teamId])
 }
 
 // Proposta di scambio 1-per-1 tra un giocatore di una squadra e uno svincolato,

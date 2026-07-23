@@ -28,6 +28,9 @@ export default async function Home({
     freeAgents,
     freeAgentProposals,
     museum,
+    coins,
+    challenges,
+    ownedSkins,
   ] = await Promise.all([
     repo.getUserTeam(),
     repo.getStandings(),
@@ -43,6 +46,9 @@ export default async function Home({
     repo.getFreeAgents(),
     repo.getFreeAgentProposals(),
     repo.getMuseumEntries(),
+    repo.getUserCoins(),
+    repo.getChallenges(),
+    repo.getOwnedSkins(),
   ]);
 
   // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
@@ -64,6 +70,9 @@ export default async function Home({
       freeAgents={freeAgents}
       freeAgentProposals={freeAgentProposals}
       museum={museum}
+      coins={coins}
+      challenges={challenges}
+      ownedSkins={ownedSkins}
       demoMode={demoMode}
       initialTab={initialTab}
     />

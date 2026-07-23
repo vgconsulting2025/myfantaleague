@@ -9,6 +9,7 @@ interface ConfigBody {
   gazzettaName?: string;
   freeAgentEnabled?: boolean;
   freeAgentMaxPerWeek?: number;
+  acquistoCoinsAbilitato?: boolean;
 }
 
 // POST /api/config — aggiornamento (admin) della configurazione lega:
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
         );
       }
       patch.freeAgentMaxPerWeek = n;
+    }
+
+    if (body.acquistoCoinsAbilitato !== undefined) {
+      if (typeof body.acquistoCoinsAbilitato !== "boolean") {
+        return NextResponse.json({ error: "Valore non valido." }, { status: 400 });
+      }
+      patch.acquistoCoinsAbilitato = body.acquistoCoinsAbilitato;
     }
 
     if (Object.keys(patch).length === 0) {
