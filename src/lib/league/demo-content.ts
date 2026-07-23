@@ -374,3 +374,15 @@ export function generateDemoProposals(
 
   return out;
 }
+
+// Citazione "da tifoso" per l'idolo che raggiunge la Leggenda (modalità demo).
+export function generateIdolQuote(playerName: string): string {
+  const templates = [
+    `Finché ci sarà ${playerName}, noi ci crediamo!`,
+    `${playerName} uno di noi, ${playerName} uno di noi!`,
+    `Con ${playerName} in campo si sogna in grande.`,
+    `${playerName}, portaci in paradiso!`,
+    `Nato per la maglia: ${playerName} è leggenda.`,
+  ];
+  return pick(templates);
+}

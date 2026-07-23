@@ -1,14 +1,14 @@
-// Figurina stile album: cornice nei colori sociali (oro per la variante "rara"),
-// immagine del giocatore secondo priorità (foto caricata > maglia squadra >
-// maglia di default fissa dell'app), stemma della squadra come badge (logo app
-// come fallback), overlay in basso con nome e numero di maglia. La foto caricata
-// è mostrata SENZA alterazioni: bordo, badge e overlay sono elementi grafici
-// separati sovrapposti.
+// Figurina stile album. Le figurine NORMALI restano rettangolari (cornice oro
+// per la variante "rara" da fantamedia, o colori sociali). Il giocatore IDOLO
+// usa invece una carta premium a SCUDO con design per livello (IdolShieldCard),
+// così spicca nettamente. In entrambi i casi il contenuto centrale è la foto
+// caricata o la maglia di default; bordo, badge e overlay sono elementi separati.
 import Link from "next/link";
 import type { LeaguePlayer } from "@/lib/league/types";
 import { resolvePlayerImage, resolveTeamColors, displayNumber } from "@/lib/league/identity";
 import { ROLE_BADGE } from "@/components/theme";
 import TeamCrest from "@/components/brand/TeamCrest";
+import IdolShieldCard from "./IdolShieldCard";
 
 type Size = "sm" | "md" | "lg";
 
@@ -48,9 +48,11 @@ export default function Figurina({
     ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#B8901F 60%,#F3DE93 100%)"
     : `linear-gradient(150deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
 
-  const card = (
+  const card = player.isIdol ? (
+    <IdolShieldCard player={player} size={size} showBack={showBack} />
+  ) : (
     <div className="relative select-none" style={{ width: s.width, maxWidth: "100%" }}>
-      {/* Cornice: colori sociali o oro (rara) */}
+      {/* Cornice: oro (rara) o colori sociali */}
       <div
         className={`rounded-2xl p-[3px] shadow-md ${rare ? "shadow-oro/40" : ""}`}
         style={{ background: frameBg }}

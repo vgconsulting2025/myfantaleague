@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { LeagueTeam } from "@/lib/league/types";
+import type { LeaguePlayer, LeagueTeam } from "@/lib/league/types";
+import { canChangeIdol } from "@/lib/league/idol";
 import { ROLE_LABELS, ROLE_ORDER } from "./theme";
 import { RoleBadge } from "./ui";
 import Figurina from "./figurine/Figurina";
@@ -44,9 +46,81 @@ function ViewToggle({
   );
 }
 
-export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
+// Stella per designare l'idolo. Se il giocatore è già idolo mostra il badge
+// attivo; altrimenti un pulsante (disabilitato se il cambio non è ancora
+// consentito per il vincolo di una modifica a giornata).
+function IdolStar({
+  player,
+  canChange,
+  busy,
+  onDesignate,
+}: {
+  player: LeaguePlayer;
+  canChange: boolean;
+  busy: boolean;
+  onDesignate: (id: string) => void;
+}) {
+  if (player.isIdol) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-oro/20 px-2.5 py-1 text-xs font-bold text-oro-800 ring-1 ring-oro">
+        <span aria-hidden>★</span> Idolo
+      </span>
+    );
+  }
+  return (
+    <button
+      onClick={() => onDesignate(player.id)}
+      disabled={busy || !canChange}
+      title={
+        canChange
+          ? "Designa come idolo della squadra"
+          : "Potrai cambiare idolo dopo la prossima giornata"
+      }
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:text-oro-700 hover:ring-oro disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <span aria-hidden>☆</span> {busy ? "..." : "Idolo"}
+    </button>
+  );
+}
+
+export default function Squadra({
+  userTeam,
+  latestGiornataNumber,
+}: {
+  userTeam: LeagueTeam;
+  latestGiornataNumber: number;
+}) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [idolError, setIdolError] = useState<string | null>(null);
   const players = userTeam.players;
+  const idol = players.find((p) => p.isIdol) ?? null;
+  const canChange = canChangeIdol(
+    userTeam.idolPlayerId ?? null,
+    userTeam.idolSetGiornata ?? null,
+    latestGiornataNumber,
+  );
+
+  async function designate(playerId: string) {
+    setBusyId(playerId);
+    setIdolError(null);
+    try {
+      const res = await fetch("/api/idol", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Impossibile designare l'idolo.");
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setIdolError(e instanceof Error ? e.message : "Errore.");
+    } finally {
+      setBusyId(null);
+    }
+  }
   const totalQuota = players.reduce((s, p) => s + p.quota, 0);
   const avgFm = players.length
     ? (players.reduce((s, p) => s + p.fm, 0) / players.length).toFixed(2)
@@ -113,6 +187,29 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
         </div>
       )}
 
+      {/* Idolo della squadra */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-oro-200 bg-oro-50/50 px-4 py-3">
+        <span className="text-oro" aria-hidden>
+          ★
+        </span>
+        <span className="text-sm font-semibold text-verde-900">
+          Idolo della squadra: {idol ? idol.name : "nessuno"}
+        </span>
+        <span className="text-xs text-slate-500">
+          · Designalo con la stella sulla figurina. Puoi cambiarlo una volta a giornata.
+        </span>
+        {!canChange && (
+          <span className="text-xs font-medium text-amber-700">
+            · Cambio disponibile dopo la prossima giornata.
+          </span>
+        )}
+      </div>
+      {idolError && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+          {idolError}
+        </div>
+      )}
+
       {/* Rosa per ruolo */}
       {reparti.map((r) => (
         <div key={r.role} className="mb-8">
@@ -127,7 +224,15 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
           {view === "grid" ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {r.players.map((p) => (
-                <Figurina key={p.id} player={p} size="md" href={`/figurina/${p.id}`} />
+                <div key={p.id} className="flex flex-col items-center gap-2">
+                  <Figurina player={p} size="md" href={`/figurina/${p.id}`} />
+                  <IdolStar
+                    player={p}
+                    canChange={canChange}
+                    busy={busyId === p.id}
+                    onDesignate={designate}
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -154,6 +259,12 @@ export default function Squadra({ userTeam }: { userTeam: LeagueTeam }) {
                     >
                       FM {p.fm.toFixed(1)}
                     </span>
+                    <IdolStar
+                      player={p}
+                      canChange={canChange}
+                      busy={busyId === p.id}
+                      onDesignate={designate}
+                    />
                   </li>
                 ))}
               </ul>

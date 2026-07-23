@@ -62,6 +62,14 @@ export interface PerformanceInput {
   fielded: boolean;
 }
 
+// Salita di livello dell'idolo, restituita da advanceIdolTracking.
+export interface IdolLevelUp {
+  teamName: string;
+  playerName: string;
+  fromLevel: number;
+  toLevel: number;
+}
+
 export interface CoachRatingInput {
   teamName: string;
   president: string;
@@ -152,6 +160,12 @@ export interface LeagueRepository {
   getFreeAgentProposal(id: string): Promise<FreeAgentProposalItem | null>;
   setFreeAgentProposalStatus(id: string, status: "accepted" | "rejected"): Promise<void>;
   executeFreeAgentSwap(teamName: string, giveName: string, faName: string): Promise<void>;
+
+  // Giocatore idolo
+  setIdol(playerId: string, giornata: number): Promise<void>;
+  // Aggiorna contatori e livello di ogni idolo; ritorna le salite di livello.
+  advanceIdolTracking(performances: PerformanceInput[]): Promise<IdolLevelUp[]>;
+  setIdolQuote(teamName: string, quote: string): Promise<void>;
 
   saveCoachRatings(giornataNumber: number, ratings: CoachRatingInput[]): Promise<void>;
   savePeerVotes(giornataNumber: number, votes: PeerVoteInput[]): Promise<void>;

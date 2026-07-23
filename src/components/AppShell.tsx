@@ -195,7 +195,9 @@ export default function AppShell({
               freeAgentProposals={freeAgentProposals}
             />
           )}
-          {tab === "squadra" && <Squadra userTeam={userTeam} />}
+          {tab === "squadra" && (
+            <Squadra userTeam={userTeam} latestGiornataNumber={latestGiornata?.number ?? 0} />
+          )}
           {tab === "classifica" && <Classifica standings={standings} />}
           {tab === "voti" && (
             <Voti

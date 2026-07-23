@@ -14,6 +14,17 @@ export interface TeamIdentity {
   color2: string | null;
 }
 
+// Progressi del giocatore idolo, tracciati giornata per giornata mentre resta
+// idolo. Base per futuri livelli/skin.
+export interface IdolProgress {
+  cumFm: number; // fantamedia cumulata giornata per giornata
+  bestCount: number; // giornate da migliore in campo della squadra
+  streak: number; // giornate consecutive da idolo senza cambio
+  setGiornata: number | null; // giornata dell'ultima designazione
+  level: number; // livello progressione (1 Bronzo .. 4 Leggenda)
+  quote: string | null; // citazione "da tifoso" (solo Leggenda)
+}
+
 export interface LeaguePlayer {
   id: string;
   name: string;
@@ -24,6 +35,8 @@ export interface LeaguePlayer {
   imageUrl?: string | null;
   number?: number | null;
   owner?: TeamIdentity; // identità della squadra proprietaria (per figurina)
+  isIdol?: boolean; // true se è l'idolo designato della propria squadra
+  idolProgress?: IdolProgress | null; // valorizzato solo sul giocatore idolo
 }
 
 export interface LeagueTeam {
@@ -39,6 +52,8 @@ export interface LeagueTeam {
   jerseyBackUrl?: string | null;
   color1?: string | null;
   color2?: string | null;
+  idolPlayerId?: string | null; // id del giocatore idolo (null = nessuno)
+  idolSetGiornata?: number | null; // giornata dell'ultima designazione (vincolo cambio)
 }
 
 export interface PlayerPerformance {

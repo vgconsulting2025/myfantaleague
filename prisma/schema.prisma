@@ -25,6 +25,15 @@ model Team {
   jerseyBackUrl  String?
   color1         String?
   color2         String?
+  // Giocatore idolo della squadra + tracciamento progressi.
+  // Base estendibile per futuri livelli/skin (nessuna FK: idolPlayerId risolto a mano).
+  idolPlayerId    String? // id del giocatore designato idolo (null = nessuno)
+  idolSetGiornata Int? // giornata dell'ultima designazione (vincolo: 1 cambio per giornata)
+  idolCumFm       Float   @default(0) // fantamedia cumulata giornata per giornata mentre idolo
+  idolBestCount   Int     @default(0) // giornate da migliore in campo della squadra
+  idolStreak      Int     @default(0) // giornate consecutive da idolo senza cambio
+  idolLevel       Int     @default(1) // livello progressione idolo (1 Bronzo .. 4 Leggenda)
+  idolQuote       String? // citazione "da tifoso" (solo livello Leggenda)
 }
 
 model Player {

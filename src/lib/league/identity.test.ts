@@ -114,6 +114,19 @@ describe("resolvePlayerImage (priorità)", () => {
   });
 });
 
+describe("badge idolo e 'rara' coesistono (flag indipendenti)", () => {
+  it("un idolo con fantamedia alta è anche 'rara': entrambi i badge si mostrano", () => {
+    const p = player({ name: "Lautaro", fm: 7.5, isIdol: true });
+    expect(resolvePlayerImage(p).rare).toBe(true); // badge rara (fm >= 7)
+    expect(p.isIdol).toBe(true); // badge idolo
+  });
+  it("un idolo con fantamedia bassa mostra solo il badge idolo, non 'rara'", () => {
+    const p = player({ name: "Gigi", fm: 5.5, isIdol: true });
+    expect(resolvePlayerImage(p).rare).toBe(false);
+    expect(p.isIdol).toBe(true);
+  });
+});
+
 describe("isValidHexColor", () => {
   it("valida esadecimali a 6 cifre", () => {
     expect(isValidHexColor("#123D28")).toBe(true);

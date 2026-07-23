@@ -56,8 +56,8 @@ export default async function FigurinaPage({ params }: { params: Promise<{ id: s
 
             {!player.imageUrl && (
               <p className="mt-5 max-w-md text-sm italic text-slate-400">
-                Immagine di default: la maglia della squadra (o una maglia generata nei colori
-                sociali) con nome e numero. Carica una foto per personalizzarla.
+                Immagine di default: la maglia della squadra (o la maglia di default dell&apos;app)
+                con nome e numero. Carica una foto per personalizzarla.
               </p>
             )}
 

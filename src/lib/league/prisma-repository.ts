@@ -8,6 +8,7 @@ import type {
   FlashItem,
   FreeAgentProposalItem,
   Giornata,
+  IdolProgress,
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
@@ -17,6 +18,7 @@ import type {
   TradeRecord,
   TradeStatus,
 } from "./types";
+import { nextIdolCounters, idolLevel } from "./idol";
 import type {
   LeagueRepository,
   NewTrade,
@@ -27,6 +29,7 @@ import type {
   TeamImageKind,
   FreeAgentInput,
   NewFreeAgentProposal,
+  IdolLevelUp,
 } from "./repository";
 import type { ImportResultRow } from "./import/types";
 import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
@@ -56,6 +59,13 @@ type TeamRow = {
   jerseyBackUrl?: string | null;
   color1?: string | null;
   color2?: string | null;
+  idolPlayerId?: string | null;
+  idolSetGiornata?: number | null;
+  idolCumFm?: number;
+  idolBestCount?: number;
+  idolStreak?: number;
+  idolLevel?: number;
+  idolQuote?: string | null;
 };
 
 function teamIdentity(t: {
@@ -76,7 +86,11 @@ function teamIdentity(t: {
   };
 }
 
-function mapPlayer(p: PlayerRow, owner?: TeamIdentity): LeaguePlayer {
+function mapPlayer(
+  p: PlayerRow,
+  owner?: TeamIdentity,
+  idol?: { isIdol: boolean; progress?: IdolProgress | null },
+): LeaguePlayer {
   return {
     id: p.id,
     name: p.name,
@@ -87,15 +101,43 @@ function mapPlayer(p: PlayerRow, owner?: TeamIdentity): LeaguePlayer {
     imageUrl: p.imageUrl ?? null,
     number: p.number ?? null,
     owner,
+    isIdol: idol?.isIdol ?? false,
+    idolProgress: idol?.progress ?? null,
+  };
+}
+
+// Progressi correnti dell'idolo, ricavati dai contatori sulla squadra.
+function idolProgressOf(t: {
+  idolCumFm?: number;
+  idolBestCount?: number;
+  idolStreak?: number;
+  idolSetGiornata?: number | null;
+  idolLevel?: number;
+  idolQuote?: string | null;
+}): IdolProgress {
+  return {
+    cumFm: t.idolCumFm ?? 0,
+    bestCount: t.idolBestCount ?? 0,
+    streak: t.idolStreak ?? 0,
+    setGiornata: t.idolSetGiornata ?? null,
+    level: t.idolLevel ?? 1,
+    quote: t.idolQuote ?? null,
   };
 }
 
 function mapTeam(t: TeamRow): LeagueTeam {
   const roleOrder: Record<string, number> = { P: 0, D: 1, C: 2, A: 3 };
   const identity = teamIdentity(t);
+  const idolId = t.idolPlayerId ?? null;
+  const progress = idolId ? idolProgressOf(t) : null;
   const players = [...t.players]
     .sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9) || b.fm - a.fm)
-    .map((p) => mapPlayer(p, identity));
+    .map((p) =>
+      mapPlayer(p, identity, {
+        isIdol: p.id === idolId,
+        progress: p.id === idolId ? progress : null,
+      }),
+    );
   return {
     id: t.id,
     slug: t.slug,
@@ -109,6 +151,8 @@ function mapTeam(t: TeamRow): LeagueTeam {
     jerseyBackUrl: identity.jerseyBackUrl,
     color1: identity.color1,
     color2: identity.color2,
+    idolPlayerId: idolId,
+    idolSetGiornata: t.idolSetGiornata ?? null,
   };
 }
 
@@ -279,8 +323,12 @@ export class PrismaLeagueRepository implements LeagueRepository {
       };
     }
     const identity = teamIdentity(p.team);
+    const isIdol = p.team.idolPlayerId === p.id;
     return {
-      player: mapPlayer(p, identity),
+      player: mapPlayer(p, identity, {
+        isIdol,
+        progress: isIdol ? idolProgressOf(p.team) : null,
+      }),
       teamName: p.team.name,
       teamSlug: p.team.slug,
       isUser: p.team.isUser,
@@ -559,6 +607,84 @@ export class PrismaLeagueRepository implements LeagueRepository {
       ratings,
       votes,
     );
+  }
+
+  async setIdol(playerId: string, giornata: number): Promise<void> {
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      include: { team: true },
+    });
+    if (!player || !player.team || !player.team.isUser) {
+      throw new Error("Il giocatore non appartiene alla tua squadra.");
+    }
+    // Nuova designazione: azzera i contatori di progresso e riparte da Bronzo.
+    await prisma.team.update({
+      where: { id: player.team.id },
+      data: {
+        idolPlayerId: playerId,
+        idolSetGiornata: giornata,
+        idolCumFm: 0,
+        idolBestCount: 0,
+        idolStreak: 0,
+        idolLevel: 1,
+        idolQuote: null,
+      },
+    });
+  }
+
+  async advanceIdolTracking(performances: PerformanceInput[]): Promise<IdolLevelUp[]> {
+    const teams = await prisma.team.findMany({ where: { NOT: { idolPlayerId: null } } });
+    const levelUps: IdolLevelUp[] = [];
+    for (const team of teams) {
+      if (!team.idolPlayerId) continue;
+      const idol = await prisma.player.findUnique({ where: { id: team.idolPlayerId } });
+      // Idolo non più nella rosa (ceduto o svincolato): azzera la designazione.
+      if (!idol || idol.teamId !== team.id) {
+        await prisma.team.update({
+          where: { id: team.id },
+          data: {
+            idolPlayerId: null,
+            idolSetGiornata: null,
+            idolCumFm: 0,
+            idolBestCount: 0,
+            idolStreak: 0,
+            idolLevel: 1,
+            idolQuote: null,
+          },
+        });
+        continue;
+      }
+      const teamPerfs = performances.filter((p) => p.teamName === team.name);
+      const next = nextIdolCounters(
+        { cumFm: team.idolCumFm, bestCount: team.idolBestCount, streak: team.idolStreak },
+        teamPerfs,
+        idol.name,
+      );
+      // Ricalcola il livello dai nuovi contatori (cresce in modo monotòno).
+      const newLevel = idolLevel(next);
+      if (newLevel > team.idolLevel) {
+        levelUps.push({
+          teamName: team.name,
+          playerName: idol.name,
+          fromLevel: team.idolLevel,
+          toLevel: newLevel,
+        });
+      }
+      await prisma.team.update({
+        where: { id: team.id },
+        data: {
+          idolCumFm: next.cumFm,
+          idolBestCount: next.bestCount,
+          idolStreak: next.streak,
+          idolLevel: newLevel,
+        },
+      });
+    }
+    return levelUps;
+  }
+
+  async setIdolQuote(teamName: string, quote: string): Promise<void> {
+    await prisma.team.updateMany({ where: { name: teamName }, data: { idolQuote: quote } });
   }
 
   async saveCoachRatings(giornataNumber: number, ratings: CoachRatingInput[]): Promise<void> {

@@ -11,13 +11,15 @@ import { hasAnthropicKey, askClaude, parseAiJson } from "@/lib/anthropic";
 import {
   generateDemoCoachRatings,
   generateSimulatedPeerVotes,
+  generateIdolQuote,
 } from "@/lib/league/demo-content";
 import {
   pickFreeAgentMatch,
   freeAgentRationale,
   freeAgentComment,
 } from "@/lib/league/freeagents";
-import { announceFreeAgent, outcomeFreeAgent } from "@/lib/league/news";
+import { announceFreeAgent, outcomeFreeAgent, announceIdolLevelUp } from "@/lib/league/news";
+import { IDOL_LEVEL_META, type IdolLevel } from "@/lib/league/idol";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,6 +127,19 @@ Rispondi SOLO con JSON valido, nessun altro testo:
   }
   if (!out.length) throw new Error("Nessun voto valido");
   return out;
+}
+
+// Citazione "da tifoso" per l'idolo che raggiunge la Leggenda: AI se disponibile,
+// altrimenti template locale (modalità demo).
+async function idolLegendQuote(playerName: string): Promise<string> {
+  if (!hasAnthropicKey()) return generateIdolQuote(playerName);
+  try {
+    const prompt = `Scrivi una brevissima citazione da tifoso (max 12 parole), in italiano, entusiasta e goliardica, dedicata al giocatore "${playerName}" diventato idolo leggendario della sua squadra di fantacalcio. Rispondi SOLO con la frase, senza virgolette.`;
+    const raw = (await askClaude(prompt, 60)).trim().replace(/^["'«»]+|["'«»]+$/g, "");
+    return raw || generateIdolQuote(playerName);
+  } catch {
+    return generateIdolQuote(playerName);
+  }
 }
 
 // Canale svincolati: a ogni giornata l'Agente propone in autonomia, con cadenza
@@ -253,6 +268,26 @@ export async function POST() {
 
     const allPerfs = [...perfByTeam.values()].flat();
     const giornata = await repo.recordGiornata(results, pointsByTeamName, allPerfs);
+
+    // Aggiorna progressi e livelli dell'idolo di ogni squadra (non blocca l'esito).
+    // Per ogni salita di livello: articolo dedicato + flash; per la Leggenda anche
+    // una citazione da tifoso (AI o demo).
+    try {
+      const levelUps = await repo.advanceIdolTracking(allPerfs);
+      for (const ev of levelUps) {
+        const level = ev.toLevel as IdolLevel;
+        await repo.addNewsArticle(announceIdolLevelUp(ev.teamName, ev.playerName, level));
+        await repo.pushFlashNews(
+          `${ev.playerName} sale al livello ${IDOL_LEVEL_META[level].label} tra gli idoli del ${ev.teamName}.`,
+          "idolo",
+        );
+        if (ev.toLevel >= 4) {
+          await repo.setIdolQuote(ev.teamName, await idolLegendQuote(ev.playerName));
+        }
+      }
+    } catch (e) {
+      console.error("[/api/simulate] idolo", e);
+    }
 
     // Voti AI agli allenatori (fallback a template in modalità demo o in caso d'errore).
     let ratings: CoachRatingInput[];

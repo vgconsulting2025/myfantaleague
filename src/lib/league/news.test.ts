@@ -4,6 +4,8 @@ import {
   outcomeSquadTrade,
   announceFreeAgent,
   outcomeFreeAgent,
+  announceIdol,
+  announceIdolLevelUp,
 } from "./news";
 
 describe("articolo di proposta — scambio tra squadre", () => {
@@ -41,5 +43,26 @@ describe("articolo di proposta/esito — svincolati", () => {
     const no = outcomeFreeAgent("Real Divano", "Falcone", "Meret", false);
     expect(ok.category).toBe("SVINCOLATI");
     expect(ok.title).not.toBe(no.title);
+  });
+});
+
+describe("articolo — designazione idolo", () => {
+  it("annuncia il nuovo idolo citando squadra e giocatore", () => {
+    const a = announceIdol("Real Divano", "Lautaro");
+    expect(a.category).toBe("IDOLO");
+    expect(a.title).toContain("Lautaro");
+    expect(`${a.title} ${a.body}`).toContain("Real Divano");
+  });
+});
+
+describe("articolo — salita di livello idolo", () => {
+  it("annuncia la salita citando il livello (Verde) ed è distinto dalla designazione", () => {
+    const up = announceIdolLevelUp("Real Divano", "Barella", 3);
+    expect(up.category).toBe("IDOLO");
+    expect(up.kicker).toBe("Salita di livello");
+    expect(`${up.title} ${up.body}`).toContain("Barella");
+    expect(`${up.title} ${up.body}`).toMatch(/Verde/);
+    // diverso dall'articolo di semplice designazione
+    expect(up.kicker).not.toBe(announceIdol("Real Divano", "Barella").kicker);
   });
 });

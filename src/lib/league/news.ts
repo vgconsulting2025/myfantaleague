@@ -3,6 +3,7 @@
 // creare notizie della Gazzetta al volo (indipendenti dall'AI). Testabile.
 
 import type { ArticleInput } from "./types";
+import { IDOL_LEVEL_META, type IdolLevel } from "./idol";
 
 function pick<T>(a: T[]): T {
   return a[Math.floor(Math.random() * a.length)];
@@ -123,6 +124,58 @@ export function outcomeFreeAgent(
       "Fiducia nella rosa attuale.",
       "Trattativa naufragata.",
       "Se ne riparla.",
+    ])}`,
+  };
+}
+
+// Annuncio: un presidente designa (o cambia) l'idolo della propria squadra.
+export function announceIdol(teamName: string, playerName: string): ArticleInput {
+  return {
+    kicker: "Nuovo idolo",
+    category: "IDOLO",
+    title: pick([
+      `${teamName} ha un nuovo eroe: ${playerName} è l'idolo della squadra`,
+      `${playerName} incoronato: è lui l'idolo del ${teamName}`,
+      `Colpo di scena a ${teamName}: ${playerName} eletto idolo`,
+    ]),
+    body: `Il presidente del ${teamName} designa ${playerName} come idolo della squadra. ${pick([
+      "La curva è già in delirio.",
+      "Ora tocca a lui trascinare tutti.",
+      "Aspettative alle stelle, guai a deludere.",
+      "Maglia sudata garantita, o quasi.",
+    ])}`,
+  };
+}
+
+const LEVEL_PHRASE: Record<IdolLevel, string> = {
+  1: "di Bronzo",
+  2: "d'Argento",
+  3: "Verde",
+  4: "Leggenda",
+};
+
+// Annuncio: l'idolo di una squadra sale a un livello superiore. Distinto
+// dall'articolo di designazione.
+export function announceIdolLevelUp(
+  teamName: string,
+  playerName: string,
+  level: IdolLevel,
+): ArticleInput {
+  const phrase = LEVEL_PHRASE[level];
+  const label = IDOL_LEVEL_META[level].label;
+  return {
+    kicker: "Salita di livello",
+    category: "IDOLO",
+    title: pick([
+      `${playerName} è ufficialmente un Idolo ${phrase} per il ${teamName}!`,
+      `${teamName} sugli scudi: ${playerName} raggiunge il livello ${label}`,
+      `Nuova gloria: ${playerName} promosso Idolo ${phrase} del ${teamName}`,
+    ]),
+    body: `${playerName} sale al livello ${label} nella scala degli idoli del ${teamName}. ${pick([
+      "La bacheca si illumina.",
+      "Il pubblico canta il suo nome.",
+      "Cornice nuova, ambizioni immutate.",
+      "Un altro gradino verso la leggenda.",
     ])}`,
   };
 }
