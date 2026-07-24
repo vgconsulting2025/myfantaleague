@@ -1,11 +1,27 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ChallengeItem, LeagueTeam, LeaguePlayer, OwnedSkinItem } from "@/lib/league/types";
-import { SKINS, RARITY_META, PACK_COST, COIN_PACKS, skinByKey } from "@/lib/league/skins";
+import type { CardItem, ChallengeItem, LeaguePlayer, LeagueTeam } from "@/lib/league/types";
+import {
+  PACK_TYPES,
+  RARITY_META,
+  RARITY_ORDER,
+  COIN_PACKS,
+  type CardRarity,
+} from "@/lib/league/cards";
 import { SectionTitle } from "./ui";
 import Figurina from "./figurine/Figurina";
+
+// Esito dell'apertura di una bustina (rispecchia PackResult del repository).
+interface RevealResult {
+  rarity: string;
+  playerId: string;
+  playerName: string;
+  duplicate: boolean;
+  refund: number;
+  coins: number;
+}
 
 function CoinAmount({ n, className = "" }: { n: number; className?: string }) {
   return (
@@ -16,11 +32,11 @@ function CoinAmount({ n, className = "" }: { n: number; className?: string }) {
   );
 }
 
-// Mostra la skin su una figurina di esempio (per reveal e inventario).
-function skinPreviewPlayer(skinKey: string): LeaguePlayer {
+// Figurina di anteprima per mostrare l'artwork di una rarità con un nome giocatore.
+function cardPreviewPlayer(name: string, rarity: string): LeaguePlayer {
   return {
-    id: `skin-preview-${skinKey}`,
-    name: "Anteprima",
+    id: `card-preview-${rarity}-${name}`,
+    name,
     role: "A",
     club: "—",
     quota: 0,
@@ -37,129 +53,184 @@ function skinPreviewPlayer(skinKey: string): LeaguePlayer {
     },
     isIdol: false,
     idolProgress: null,
-    skinKey,
+    skinKey: rarity,
   };
 }
 
-// Overlay di apertura bustina con reveal drammatico.
-function PackOpenModal({ skinKey, onClose }: { skinKey: string; onClose: () => void }) {
-  const skin = skinByKey(skinKey);
-  if (!skin) return null;
-  const rarity = RARITY_META[skin.rarity];
+// Overlay di apertura bustina: suspense (bustina che vibra) → reveal della carta.
+function PackOpenModal({ result, onClose }: { result: RevealResult; onClose: () => void }) {
+  const [phase, setPhase] = useState<"suspense" | "reveal">("suspense");
+  useEffect(() => {
+    const t = setTimeout(() => setPhase("reveal"), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const rarity = (RARITY_ORDER as string[]).includes(result.rarity)
+    ? (result.rarity as CardRarity)
+    : "classica";
+  const meta = RARITY_META[rarity];
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
+      onClick={phase === "reveal" ? onClose : undefined}
     >
       <div
-        className="pack-reveal relative w-full max-w-xs overflow-hidden rounded-3xl bg-verde-900 p-7 text-center text-white shadow-2xl ring-1 ring-white/10"
+        className={`relative w-full max-w-xs overflow-hidden rounded-3xl bg-verde-900 p-7 text-center text-white shadow-2xl ring-1 ring-white/10 ${
+          phase === "reveal" ? "pack-reveal" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Bagliore in base alla rarità */}
         <div
-          className="ceremony-glow pointer-events-none absolute left-1/2 top-[40%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ background: `radial-gradient(circle, ${rarity.glow}88, transparent 68%)` }}
+          className="ceremony-glow pointer-events-none absolute left-1/2 top-[42%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ background: `radial-gradient(circle, ${meta.glow}88, transparent 68%)` }}
           aria-hidden
         />
-        <div className="relative">
-          <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">Bustina aperta!</div>
-          <div className="mx-auto mt-4 flex w-fit justify-center">
-            <Figurina player={skinPreviewPlayer(skinKey)} size="md" />
+
+        {phase === "suspense" ? (
+          <div className="relative py-10">
+            <div className="pack-shake mx-auto flex h-40 w-28 items-center justify-center rounded-2xl bg-gradient-to-br from-oro to-oro-700 text-5xl shadow-xl ring-2 ring-white/20">
+              🎴
+            </div>
+            <div className="mt-6 text-sm font-bold uppercase tracking-[0.25em] text-white/70">
+              Apertura in corso…
+            </div>
           </div>
-          <span
-            className={`mt-4 inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${rarity.chip}`}
-          >
-            {rarity.label}
-          </span>
-          <h2 className="mt-1 font-display text-2xl font-bold text-oro">{skin.name}</h2>
-          <p className="mt-1 text-sm text-white/60">Skin cosmetica aggiunta all&apos;inventario.</p>
-          <button
-            onClick={onClose}
-            className="mt-5 w-full rounded-xl bg-oro px-5 py-3 text-sm font-bold uppercase tracking-wide text-verde-900 transition hover:brightness-105"
-          >
-            Fantastico!
-          </button>
-        </div>
+        ) : (
+          <div className="relative">
+            <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/70">
+              Bustina aperta!
+            </div>
+            <div className="mx-auto mt-4 flex w-fit justify-center">
+              <Figurina player={cardPreviewPlayer(result.playerName, rarity)} size="md" />
+            </div>
+            <span
+              className={`mt-4 inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${meta.chip}`}
+            >
+              {meta.label}
+            </span>
+            <h2 className="mt-1 font-display text-2xl font-bold text-oro">{result.playerName}</h2>
+            {result.duplicate ? (
+              <p className="mt-1 text-sm text-white/70">
+                Doppione! Convertito in{" "}
+                <CoinAmount n={result.refund} className="font-semibold text-oro" />
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-white/60">Nuova carta aggiunta alla collezione.</p>
+            )}
+            <button
+              onClick={onClose}
+              className="mt-5 w-full rounded-xl bg-oro px-5 py-3 text-sm font-bold uppercase tracking-wide text-verde-900 transition hover:brightness-105"
+            >
+              Fantastico!
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function SkinSwatch({ skinKey, count }: { skinKey: string; count?: number }) {
-  const skin = skinByKey(skinKey);
-  if (!skin) return null;
-  const rarity = RARITY_META[skin.rarity];
-  return (
-    <div className={`rounded-2xl p-[3px] shadow-sm ring-1 ${rarity.ring}`} style={{ background: skin.frame }}>
-      <div className="rounded-[13px] bg-white p-3">
-        <div className="relative h-16 overflow-hidden rounded-lg" style={{ background: skin.frame }} aria-hidden>
-          {skin.overlay && <span className="absolute inset-0" style={{ background: skin.overlay }} />}
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="truncate font-display text-sm font-bold text-slate-900">
-            {skin.name}
-            {count && count > 1 ? ` ×${count}` : ""}
-          </span>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${rarity.chip}`}>
-            {rarity.label}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+// Percentuali di rarità di un tipo di bustina (i pesi sommano a 100).
+function weightsLabel(weights: Record<CardRarity, number>): string {
+  const total = RARITY_ORDER.reduce((s, r) => s + weights[r], 0);
+  return RARITY_ORDER.map(
+    (r) => `${RARITY_META[r].label} ${Math.round((weights[r] / total) * 100)}%`,
+  ).join(" · ");
 }
 
 export default function Bustine({
   userTeam,
   coins,
   challenges,
-  ownedSkins,
+  collection,
+  freePackAvailable,
   acquistoAbilitato,
 }: {
   userTeam: LeagueTeam;
   coins: number;
   challenges: ChallengeItem[];
-  ownedSkins: OwnedSkinItem[];
+  collection: CardItem[];
+  freePackAvailable: boolean;
   acquistoAbilitato: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [opening, setOpening] = useState(false);
-  const [revealed, setRevealed] = useState<string | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<RevealResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyPlayer, setBusyPlayer] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | CardRarity>("all");
 
-  const applicablePlayers = userTeam.players.filter((p) => !p.isIdol);
+  // Conteggi per rarità (per i filtri).
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: collection.length, classica: 0, speciale: 0, iconica: 0 };
+    for (const card of collection) if (card.rarity in c) c[card.rarity]++;
+    return c;
+  }, [collection]);
 
-  async function openPack() {
-    setOpening(true);
+  const visibleCards = useMemo(
+    () => (filter === "all" ? collection : collection.filter((c) => c.rarity === filter)),
+    [collection, filter],
+  );
+
+  // Carte dei giocatori ATTUALMENTE in rosa, raggruppate per giocatore (per l'applicazione).
+  const rosterCards = useMemo(() => {
+    const map = new Map<string, { name: string; rarities: CardRarity[] }>();
+    for (const card of collection) {
+      if (!card.inRoster) continue;
+      if (!(RARITY_ORDER as string[]).includes(card.rarity)) continue;
+      const entry = map.get(card.playerId) ?? { name: card.playerName, rarities: [] };
+      const r = card.rarity as CardRarity;
+      if (!entry.rarities.includes(r)) entry.rarities.push(r);
+      map.set(card.playerId, entry);
+    }
+    // ordina le rarità di ogni giocatore per pregio crescente
+    for (const e of map.values()) e.rarities.sort((a, b) => RARITY_ORDER.indexOf(a) - RARITY_ORDER.indexOf(b));
+    return map;
+  }, [collection]);
+
+  const playerById = useMemo(() => {
+    const m = new Map<string, LeaguePlayer>();
+    for (const p of userTeam.players) m.set(p.id, p);
+    return m;
+  }, [userTeam.players]);
+
+  async function openPack(type: string, free: boolean) {
+    const key = free ? "free" : type;
+    setOpening(key);
     setError(null);
     try {
-      const res = await fetch("/api/pack/open", { method: "POST" });
+      const res = await fetch("/api/pack/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, free }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Impossibile aprire la bustina.");
-      setRevealed(data.skinKey);
+      setRevealed(data as RevealResult);
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore.");
     } finally {
-      setOpening(false);
+      setOpening(null);
     }
   }
 
-  async function applySkin(playerId: string, skinKey: string) {
+  async function applyCard(playerId: string, rarity: string) {
     setBusyPlayer(playerId);
     setError(null);
     try {
       const res = await fetch("/api/skin/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, skinKey: skinKey || null }),
+        body: JSON.stringify({ playerId, rarity: rarity || null }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Impossibile applicare la skin.");
+      if (!res.ok) throw new Error(data.error || "Impossibile applicare la carta.");
       startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Errore.");
@@ -219,32 +290,195 @@ export default function Bustine({
       </section>
 
       {/* Apri una bustina */}
-      <section className="mb-8 overflow-hidden rounded-2xl border border-oro-200 bg-gradient-to-br from-oro-50 to-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <section className="mb-8">
+        <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
+          Apri una bustina
+        </h3>
+
+        {/* Bustina del giorno gratuita */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-verde-200 bg-verde-50 p-4 shadow-sm">
           <div>
-            <h3 className="font-display text-xl font-bold text-slate-900">Apri una bustina</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Costa <CoinAmount n={PACK_COST} className="font-semibold text-oro-700" /> · assegna una skin cosmetica
-              casuale (comune / rara / leggendaria).
+            <div className="font-display text-base font-bold text-verde-900">🎁 Bustina del giorno</div>
+            <p className="text-sm text-slate-600">
+              {freePackAvailable
+                ? "Una bustina Economica gratuita, offerta ogni giornata."
+                : "Già ritirata: torna dopo la prossima giornata simulata."}
             </p>
           </div>
           <button
-            onClick={openPack}
-            disabled={opening || coins < PACK_COST}
-            className="inline-flex items-center gap-2 rounded-xl bg-verde px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow transition hover:bg-verde-700 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => openPack("economica", true)}
+            disabled={!freePackAvailable || opening !== null}
+            className="inline-flex items-center gap-2 rounded-xl bg-verde px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow transition hover:bg-verde-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {opening ? "Apro..." : `Apri bustina`}
+            {opening === "free" ? "Apro..." : freePackAvailable ? "Ritira gratis" : "Ritirata"}
           </button>
         </div>
-        {coins < PACK_COST && (
-          <p className="mt-2 text-xs font-medium text-amber-700">
-            Fanta Coins insufficienti: completa le sfide per guadagnarne.
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {PACK_TYPES.map((pack) => {
+            const affordable = coins >= pack.cost;
+            const premium = pack.key === "premium";
+            return (
+              <div
+                key={pack.key}
+                className={`flex flex-col justify-between rounded-2xl border p-5 shadow-sm ${
+                  premium
+                    ? "border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-white"
+                    : "border-sky-200 bg-gradient-to-br from-sky-50 to-white"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-display text-xl font-bold text-slate-900">{pack.label}</h4>
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-bold ${
+                        premium ? "bg-fuchsia-600 text-white" : "bg-sky-600 text-white"
+                      }`}
+                    >
+                      <CoinAmount n={pack.cost} />
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-slate-500">{weightsLabel(pack.weights)}</p>
+                </div>
+                <button
+                  onClick={() => openPack(pack.key, false)}
+                  disabled={!affordable || opening !== null}
+                  className={`mt-4 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    premium ? "bg-fuchsia-600 hover:bg-fuchsia-700" : "bg-sky-600 hover:bg-sky-700"
+                  }`}
+                >
+                  {opening === pack.key ? "Apro..." : "Apri bustina"}
+                </button>
+                {!affordable && (
+                  <p className="mt-2 text-xs font-medium text-amber-700">
+                    Fanta Coins insufficienti: completa le sfide per guadagnarne.
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Garanzia: ogni 10 bustine aperte, la 10ª dà almeno una carta Speciale. I doppioni si convertono
+          automaticamente in Fanta Coins.
+        </p>
+      </section>
+
+      {/* Confronto dei 3 livelli di rarità */}
+      <section className="mb-8">
+        <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
+          I 3 livelli di rarità
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          {RARITY_ORDER.map((r) => (
+            <div key={r} className="flex flex-col items-center gap-2">
+              <Figurina player={cardPreviewPlayer("Esempio", r)} size="sm" />
+              <span className="text-center text-xs font-medium text-slate-500">
+                {r === "classica"
+                  ? "Pulita, tinta blu."
+                  : r === "speciale"
+                    ? "Energia magenta animata."
+                    : "Stadio serale olografico."}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Collezione (filtrabile per rarità) */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
+            La mia collezione{" "}
+            <span className="text-sm font-normal text-slate-400">({collection.length})</span>
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", ...RARITY_ORDER] as const).map((f) => {
+              const active = filter === f;
+              const label = f === "all" ? "Tutte" : RARITY_META[f].label;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition ${
+                    active
+                      ? "bg-verde-900 text-oro"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}
+                >
+                  {label} ({counts[f]})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {collection.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Nessuna carta ancora. Apri una bustina per iniziare la collezione.
           </p>
+        ) : visibleCards.length === 0 ? (
+          <p className="text-sm text-slate-400">Nessuna carta di questa rarità.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {visibleCards.map((card) => (
+              <div key={card.id} className="relative flex flex-col items-center gap-1.5">
+                <Figurina player={cardPreviewPlayer(card.playerName, card.rarity)} size="sm" />
+                {card.inRoster && (
+                  <span className="rounded-full bg-verde px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    In rosa
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
+      {/* Applica le carte alle figurine (solo giocatori in rosa, non idolo) */}
+      {rosterCards.size > 0 && (
+        <section className="mb-8">
+          <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
+            Applica le carte alle tue figurine
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <ul className="divide-y divide-slate-100">
+              {[...rosterCards.entries()].map(([playerId, info]) => {
+                const player = playerById.get(playerId);
+                if (!player || player.isIdol) return null;
+                return (
+                  <li key={playerId} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="flex-1 text-sm">
+                      <span className="font-semibold text-slate-900">{info.name}</span>
+                      <span className="text-slate-400"> · {player.club}</span>
+                    </span>
+                    <select
+                      value={player.skinKey ?? ""}
+                      disabled={busyPlayer === playerId}
+                      onChange={(e) => applyCard(playerId, e.target.value)}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-verde-500 focus:outline-none disabled:opacity-60"
+                    >
+                      <option value="">Nessuna carta</option>
+                      {info.rarities.map((r) => (
+                        <option key={r} value={r}>
+                          {RARITY_META[r].label}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            Puoi applicare lo stile di una carta solo se il giocatore è nella tua rosa. L&apos;idolo usa la
+            carta a scudo e non è personalizzabile.
+          </p>
+        </section>
+      )}
+
       {/* Acquisto Fanta Coins (dietro feature flag) */}
-      <section className="mb-8">
+      <section>
         <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
           Acquista Fanta Coins
         </h3>
@@ -273,66 +507,7 @@ export default function Bustine({
         </div>
       </section>
 
-      {/* Inventario skin */}
-      <section className="mb-8">
-        <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
-          Inventario skin{" "}
-          <span className="text-sm font-normal text-slate-400">
-            ({ownedSkins.length}/{SKINS.length})
-          </span>
-        </h3>
-        {ownedSkins.length === 0 ? (
-          <p className="text-sm text-slate-400">Nessuna skin ancora. Apri una bustina per iniziare la collezione.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {ownedSkins.map((s) => (
-              <SkinSwatch key={s.skinKey} skinKey={s.skinKey} count={s.count} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Applica skin alle figurine (non idolo) */}
-      {ownedSkins.length > 0 && (
-        <section>
-          <h3 className="mb-3 font-display text-lg font-semibold uppercase tracking-wide text-slate-700">
-            Applica le skin alle tue figurine
-          </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <ul className="divide-y divide-slate-100">
-              {applicablePlayers.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="flex-1 text-sm">
-                    <span className="font-semibold text-slate-900">{p.name}</span>
-                    <span className="text-slate-400"> · {p.club}</span>
-                  </span>
-                  <select
-                    value={p.skinKey ?? ""}
-                    disabled={busyPlayer === p.id}
-                    onChange={(e) => applySkin(p.id, e.target.value)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:border-verde-500 focus:outline-none disabled:opacity-60"
-                  >
-                    <option value="">Nessuna skin</option>
-                    {ownedSkins.map((s) => {
-                      const skin = skinByKey(s.skinKey);
-                      return (
-                        <option key={s.skinKey} value={s.skinKey}>
-                          {skin ? `${skin.name} (${RARITY_META[skin.rarity].label})` : s.skinKey}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Le skin sono solo estetiche e non si applicano all&apos;idolo (che usa la carta a scudo).
-          </p>
-        </section>
-      )}
-
-      {revealed && <PackOpenModal skinKey={revealed} onClose={() => setRevealed(null)} />}
+      {revealed && <PackOpenModal result={revealed} onClose={() => setRevealed(null)} />}
     </div>
   );
 }

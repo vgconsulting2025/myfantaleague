@@ -446,6 +446,47 @@ body {
   animation: pack-reveal 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* =================== Artwork carte giocatore =================== */
+/* Speciale: bagliore di energia pulsante + raggi che ruotano lenti. */
+@keyframes card-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+.card-glow {
+  animation: card-glow 2.4s ease-in-out infinite;
+}
+@keyframes card-rays {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.card-rays {
+  animation: card-rays 26s linear infinite;
+}
+/* Iconica: luci dello stadio che si accendono a scaglioni. */
+@keyframes stadium-light {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.stadium-light {
+  animation: stadium-light 3s ease-in-out infinite;
+}
+
 /* Rispetta chi preferisce meno movimento. */
 @media (prefers-reduced-motion: reduce) {
   .idol-pop,
@@ -466,7 +507,10 @@ body {
   .ceremony-glow,
   .confetti-piece,
   .pack-shake,
-  .pack-reveal {
+  .pack-reveal,
+  .card-glow,
+  .card-rays,
+  .stadium-light {
     animation: none !important;
   }
 }

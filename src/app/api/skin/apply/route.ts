@@ -6,19 +6,19 @@ export const dynamic = "force-dynamic";
 
 interface ApplyBody {
   playerId?: string;
-  skinKey?: string | null;
+  rarity?: string | null;
 }
 
-// POST /api/skin/apply — applica (o rimuove) una skin cosmetica a una figurina
-// normale (non-idolo) della propria squadra. skinKey null = rimuove.
+// POST /api/skin/apply — applica (o rimuove) lo stile di una carta posseduta alla
+// figurina reale di un giocatore in rosa (non-idolo). rarity null = rimuove.
 export async function POST(request: Request) {
   const repo = getLeagueRepository();
   try {
-    const { playerId, skinKey } = (await request.json()) as ApplyBody;
+    const { playerId, rarity } = (await request.json()) as ApplyBody;
     if (!playerId) {
       return NextResponse.json({ error: "Giocatore non indicato." }, { status: 400 });
     }
-    await repo.applySkin(playerId, skinKey ?? null);
+    await repo.applyCard(playerId, rarity ?? null);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[/api/skin/apply]", err);

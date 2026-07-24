@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   Article,
+  CardItem,
   ChallengeItem,
   CoachRatingItem,
   Edition,
@@ -15,7 +16,6 @@ import type {
   LeaguePlayer,
   LeagueTeam,
   MuseumItem,
-  OwnedSkinItem,
   PeerVoteItem,
   PresidentStanding,
   TradeRecord,
@@ -68,7 +68,8 @@ interface AppShellProps {
   museum: MuseumItem[];
   coins: number;
   challenges: ChallengeItem[];
-  ownedSkins: OwnedSkinItem[];
+  collection: CardItem[];
+  freePackAvailable: boolean;
   demoMode: boolean;
   initialTab?: string;
 }
@@ -90,7 +91,8 @@ export default function AppShell({
   museum,
   coins,
   challenges,
-  ownedSkins,
+  collection,
+  freePackAvailable,
   demoMode,
   initialTab,
 }: AppShellProps) {
@@ -248,7 +250,8 @@ export default function AppShell({
               userTeam={userTeam}
               coins={coins}
               challenges={challenges}
-              ownedSkins={ownedSkins}
+              collection={collection}
+              freePackAvailable={freePackAvailable}
               acquistoAbilitato={config.acquistoCoinsAbilitato}
             />
           )}

@@ -4,13 +4,13 @@ import { prisma } from "@/lib/db";
 import type {
   Article,
   ArticleInput,
+  CardItem,
   ChallengeItem,
   Edition,
   FlashItem,
   FreeAgentProposalItem,
   Giornata,
   IdolProgress,
-  OwnedSkinItem,
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
@@ -27,7 +27,16 @@ import type {
 import { nextIdolCounters, idolLevel } from "./idol";
 import { applyDerbyResult } from "./rival";
 import { generateChallenges } from "./challenges";
-import { pickSkin, PACK_COST, coinPackByKey } from "./skins";
+import {
+  pickRarity,
+  packTypeByKey,
+  isGuaranteedPack,
+  isDuplicate,
+  freePackAvailable,
+  RARITY_META,
+  coinPackByKey,
+  type CardRarity,
+} from "./cards";
 import type {
   LeagueRepository,
   NewTrade,
@@ -40,6 +49,7 @@ import type {
   NewFreeAgentProposal,
   IdolLevelUp,
   DerbyEvent,
+  PackResult,
 } from "./repository";
 import type { ImportResultRow } from "./import/types";
 import type { CoachRatingItem, PeerVoteItem, PresidentStanding } from "./types";
@@ -718,41 +728,105 @@ export class PrismaLeagueRepository implements LeagueRepository {
     ]);
   }
 
-  async getOwnedSkins(): Promise<OwnedSkinItem[]> {
+  async getCollection(): Promise<CardItem[]> {
     const team = await this.requireUserTeam();
-    const grouped = await prisma.ownedSkin.groupBy({
-      by: ["skinKey"],
-      where: { teamId: team.id },
-      _count: { skinKey: true },
-    });
-    return grouped.map((g) => ({ skinKey: g.skinKey, count: g._count.skinKey }));
+    const [cards, roster] = await Promise.all([
+      prisma.ownedCard.findMany({ where: { teamId: team.id }, orderBy: { createdAt: "desc" } }),
+      prisma.player.findMany({ where: { teamId: team.id }, select: { id: true } }),
+    ]);
+    const rosterIds = new Set(roster.map((p) => p.id));
+    return cards.map((c) => ({
+      id: c.id,
+      playerId: c.playerId,
+      playerName: c.playerName,
+      rarity: c.rarity,
+      createdAt: c.createdAt.toISOString(),
+      inRoster: rosterIds.has(c.playerId),
+    }));
   }
 
-  async openPack(): Promise<{ skinKey: string; coins: number }> {
+  async getPackInfo(): Promise<{ freePackAvailable: boolean; packCount: number }> {
     const team = await this.requireUserTeam();
-    if (team.coins < PACK_COST) throw new Error("Fanta Coins insufficienti per aprire una bustina.");
-    const skin = pickSkin();
+    const latest = await prisma.giornata.findFirst({ orderBy: { number: "desc" } });
+    return {
+      freePackAvailable: freePackAvailable(team.freePackGiornata, latest?.number ?? 0),
+      packCount: team.packCount,
+    };
+  }
+
+  async openPack(packType: string, free: boolean): Promise<PackResult> {
+    const team = await this.requireUserTeam();
+    const pack = packTypeByKey(free ? "economica" : packType);
+    if (!pack) throw new Error("Tipo di bustina non valido.");
+
+    const latest = await prisma.giornata.findFirst({ orderBy: { number: "desc" } });
+    const latestNumber = latest?.number ?? 0;
+
+    if (free) {
+      if (!freePackAvailable(team.freePackGiornata, latestNumber)) {
+        throw new Error("Bustina gratuita già riscattata per questa giornata.");
+      }
+    } else if (team.coins < pack.cost) {
+      throw new Error("Fanta Coins insufficienti per questa bustina.");
+    }
+
+    // Giocatore casuale tra TUTTI i giocatori in rosa a una squadra della lega.
+    const players = await prisma.player.findMany({
+      where: { NOT: { teamId: null } },
+      select: { id: true, name: true },
+    });
+    if (players.length === 0) throw new Error("Nessun giocatore in lega.");
+    const player = players[Math.floor(Math.random() * players.length)];
+
+    const guaranteed = isGuaranteedPack(team.packCount + 1);
+    const rarity = pickRarity(pack, guaranteed) as CardRarity;
+
+    const owned = await prisma.ownedCard.findMany({
+      where: { teamId: team.id },
+      select: { playerId: true, rarity: true },
+    });
+    const duplicate = isDuplicate(owned, player.id, rarity);
+    const refund = duplicate ? RARITY_META[rarity].refund : 0;
+    const coinsDelta = (free ? 0 : -pack.cost) + refund;
+
     const updated = await prisma.$transaction(async (tx) => {
-      const t = await tx.team.update({
-        where: { id: team.id },
-        data: { coins: { decrement: PACK_COST } },
-      });
-      await tx.ownedSkin.create({ data: { teamId: team.id, skinKey: skin.key } });
+      const data: {
+        coins: { increment: number };
+        packCount: { increment: number };
+        freePackGiornata?: number;
+      } = { coins: { increment: coinsDelta }, packCount: { increment: 1 } };
+      if (free) data.freePackGiornata = latestNumber;
+      const t = await tx.team.update({ where: { id: team.id }, data });
+      if (!duplicate) {
+        await tx.ownedCard.create({
+          data: { teamId: team.id, playerId: player.id, playerName: player.name, rarity },
+        });
+      }
       return t;
     });
-    return { skinKey: skin.key, coins: updated.coins };
+
+    return {
+      rarity,
+      playerId: player.id,
+      playerName: player.name,
+      duplicate,
+      refund,
+      coins: updated.coins,
+    };
   }
 
-  async applySkin(playerId: string, skinKey: string | null): Promise<void> {
+  async applyCard(playerId: string, rarity: string | null): Promise<void> {
     const team = await this.requireUserTeam();
     const player = await prisma.player.findUnique({ where: { id: playerId } });
     if (!player || player.teamId !== team.id) throw new Error("Giocatore non della tua squadra.");
-    if (team.idolPlayerId === playerId) throw new Error("Non puoi applicare skin all'idolo.");
-    if (skinKey) {
-      const owned = await prisma.ownedSkin.findFirst({ where: { teamId: team.id, skinKey } });
-      if (!owned) throw new Error("Skin non posseduta.");
+    if (team.idolPlayerId === playerId) throw new Error("Non puoi applicare carte all'idolo.");
+    if (rarity) {
+      const owned = await prisma.ownedCard.findFirst({
+        where: { teamId: team.id, playerId, rarity },
+      });
+      if (!owned) throw new Error("Non possiedi una carta di questo giocatore con questa rarità.");
     }
-    await prisma.player.update({ where: { id: playerId }, data: { skinKey } });
+    await prisma.player.update({ where: { id: playerId }, data: { skinKey: rarity } });
   }
 
   async buyCoins(pack: string): Promise<{ coins: number }> {

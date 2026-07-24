@@ -6,10 +6,11 @@
 import Link from "next/link";
 import type { LeaguePlayer } from "@/lib/league/types";
 import { resolvePlayerImage, resolveTeamColors, displayNumber } from "@/lib/league/identity";
-import { skinByKey } from "@/lib/league/skins";
+import { RARITY_META, RARITY_ORDER, type CardRarity } from "@/lib/league/cards";
 import { ROLE_BADGE } from "@/components/theme";
 import TeamCrest from "@/components/brand/TeamCrest";
 import IdolShieldCard from "./IdolShieldCard";
+import { CardArtBackground, CARD_FRAMES } from "./CardArt";
 
 type Size = "sm" | "md" | "lg";
 
@@ -45,12 +46,16 @@ export default function Figurina({
   const imgSrc = usingBack ? player.owner!.jerseyBackUrl! : resolved.src;
   const isPhoto = resolved.mode === "photo";
 
-  // Skin cosmetica (solo figurine non-idolo): sovrascrive la cornice e aggiunge
-  // un pattern/particelle. Puramente estetica.
-  const skin = !player.isIdol && player.skinKey ? skinByKey(player.skinKey) : null;
+  // Carta giocatore applicata (solo figurine non-idolo): rarità che sovrascrive
+  // la cornice con l'artwork di rarità. Coesiste con i marcatori "rara" (★/numero
+  // oro) e usa palette distinte da idolo/rara per evitare confusione.
+  const cardRarity =
+    !player.isIdol && player.skinKey && RARITY_ORDER.includes(player.skinKey as CardRarity)
+      ? (player.skinKey as CardRarity)
+      : null;
 
-  const frameBg = skin
-    ? skin.frame
+  const frameBg = cardRarity
+    ? CARD_FRAMES[cardRarity]
     : rare
       ? "linear-gradient(145deg,#F7E7A6 0%,#D4AF37 35%,#B8901F 60%,#F3DE93 100%)"
       : `linear-gradient(150deg, ${colors.primary} 0%, ${colors.secondary} 100%)`;
@@ -59,34 +64,43 @@ export default function Figurina({
     <IdolShieldCard player={player} size={size} showBack={showBack} />
   ) : (
     <div className="relative select-none" style={{ width: s.width, maxWidth: "100%" }}>
-      {/* Cornice: oro (rara) o colori sociali */}
+      {/* Cornice: artwork carta (rarità), oro (rara) o colori sociali */}
       <div
-        className={`rounded-2xl p-[3px] shadow-md ${rare ? "shadow-oro/40" : ""}`}
+        className={`rounded-2xl p-[3px] shadow-md ${rare ? "shadow-oro/40" : ""} ${
+          cardRarity === "iconica" ? "shield-holo" : ""
+        } ${cardRarity === "speciale" ? "p-[4px]" : ""}`}
         style={{ background: frameBg }}
       >
         <div className="overflow-hidden rounded-[13px] bg-white">
           {/* Area immagine */}
           <div
             className="relative aspect-[100/118] w-full overflow-hidden"
-            style={{ background: `linear-gradient(160deg, ${colors.primary}, ${colors.secondary})` }}
+            style={{
+              background: cardRarity
+                ? "#0b1622"
+                : `linear-gradient(160deg, ${colors.primary}, ${colors.secondary})`,
+            }}
           >
+            {/* Artwork della carta (dietro la sagoma del giocatore) */}
+            {cardRarity && <CardArtBackground rarity={cardRarity} />}
+
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imgSrc}
               alt={player.name}
-              className={`absolute inset-0 h-full w-full ${isPhoto ? "object-contain" : "object-cover"}`}
+              className={`absolute inset-0 h-full w-full ${isPhoto || cardRarity ? "object-contain" : "object-cover"}`}
             />
 
-            {/* Skin cosmetica: pattern + particelle */}
-            {skin?.overlay && (
-              <span className="pointer-events-none absolute inset-0" style={{ background: skin.overlay }} aria-hidden />
+            {/* Speciale: doppio bordo interno */}
+            {cardRarity === "speciale" && (
+              <span className="pointer-events-none absolute inset-1 rounded-[10px] border-2 border-fuchsia-300/70" aria-hidden />
             )}
-            {skin?.particles && (
-              <span aria-hidden>
-                <span className="shield-twinkle pointer-events-none absolute left-[18%] top-[22%] h-1 w-1 rounded-full bg-white/90" />
-                <span className="shield-twinkle pointer-events-none absolute right-[22%] top-[38%] h-1 w-1 rounded-full bg-white/80" style={{ animationDelay: "0.5s" }} />
-                <span className="shield-twinkle pointer-events-none absolute left-[40%] top-[62%] h-1 w-1 rounded-full bg-white/80" style={{ animationDelay: "1s" }} />
-                <span className="shield-twinkle pointer-events-none absolute bottom-[20%] right-[30%] h-1 w-1 rounded-full bg-white/90" style={{ animationDelay: "0.8s" }} />
+            {/* Chip rarità della carta (palette distinta da idolo/rara) */}
+            {cardRarity && (
+              <span
+                className={`absolute left-1/2 top-1 z-10 -translate-x-1/2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow ${RARITY_META[cardRarity].chip}`}
+              >
+                {RARITY_META[cardRarity].label}
               </span>
             )}
 

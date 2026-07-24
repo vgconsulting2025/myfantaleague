@@ -9,13 +9,13 @@
 import type {
   Article,
   ArticleInput,
+  CardItem,
   ChallengeItem,
   CoachRatingItem,
   Edition,
   FlashItem,
   FreeAgentProposalItem,
   Giornata,
-  OwnedSkinItem,
   LeagueConfig,
   LeaguePlayer,
   LeagueTeam,
@@ -74,6 +74,16 @@ export interface IdolLevelUp {
   playerName: string;
   fromLevel: number;
   toLevel: number;
+}
+
+// Esito dell'apertura di una bustina.
+export interface PackResult {
+  rarity: string;
+  playerId: string;
+  playerName: string;
+  duplicate: boolean; // carta già posseduta → convertita in rimborso
+  refund: number; // coins rimborsati (0 se non doppione)
+  coins: number; // saldo aggiornato
 }
 
 // Derby col rivale storico giocato in una giornata, restituito da
@@ -182,9 +192,10 @@ export interface LeagueRepository {
   getChallenges(): Promise<ChallengeItem[]>;
   completeChallenge(key: string): Promise<number>; // ritorna i coins accreditati (0 se nessuna)
   renewChallenges(giornata: number): Promise<void>;
-  getOwnedSkins(): Promise<OwnedSkinItem[]>;
-  openPack(): Promise<{ skinKey: string; coins: number }>;
-  applySkin(playerId: string, skinKey: string | null): Promise<void>;
+  getCollection(): Promise<CardItem[]>;
+  getPackInfo(): Promise<{ freePackAvailable: boolean; packCount: number }>;
+  openPack(packType: string, free: boolean): Promise<PackResult>;
+  applyCard(playerId: string, rarity: string | null): Promise<void>;
   buyCoins(pack: string): Promise<{ coins: number }>;
 
   // Museo della lega

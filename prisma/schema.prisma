@@ -43,10 +43,12 @@ model Team {
   rivalPointsFor     Float @default(0) // punteggio totale della squadra nei derby
   rivalPointsAgainst Float @default(0) // punteggio totale del rivale nei derby
   rivalDerbies       Int   @default(0) // numero di derby giocati
-  // Fanta Coins (valuta virtuale interna) + inventario/sfide.
-  coins       Int         @default(100)
-  challenges  Challenge[]
-  ownedSkins  OwnedSkin[]
+  // Fanta Coins (valuta virtuale interna) + inventario/sfide/bustine.
+  coins            Int         @default(100)
+  packCount        Int         @default(0) // bustine aperte in totale (garanzia ogni 10)
+  freePackGiornata Int? // giornata dell'ultima bustina gratuita riscattata
+  challenges       Challenge[]
+  ownedCards       OwnedCard[]
 }
 
 model Player {
@@ -58,7 +60,7 @@ model Player {
   fm       Float
   imageUrl String? // immagine personalizzata caricata dall'utente (file statico)
   number   Int? // numero di maglia (editabile; default automatico 1-99)
-  skinKey  String? // skin cosmetica applicata (solo figurine non-idolo)
+  skinKey  String? // rarità carta applicata (classica|speciale|iconica) — solo figurine non-idolo
   team     Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId   String? // null = giocatore svincolato
 
@@ -181,13 +183,16 @@ model Challenge {
   @@index([teamId])
 }
 
-// Skin cosmetica posseduta (ottenuta aprendo una bustina).
-model OwnedSkin {
-  id        String   @id @default(cuid())
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId    String
-  skinKey   String
-  createdAt DateTime @default(now())
+// Carta giocatore posseduta (ottenuta aprendo una bustina). Collezionabile anche
+// se il giocatore non è in rosa. Al massimo una per (giocatore, rarità).
+model OwnedCard {
+  id         String   @id @default(cuid())
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId     String
+  playerId   String // giocatore della lega (può non essere in rosa)
+  playerName String // nome snapshot per la collezione
+  rarity     String // classica | speciale | iconica
+  createdAt  DateTime @default(now())
 
   @@index([teamId])
 }

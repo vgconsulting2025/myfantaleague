@@ -30,7 +30,8 @@ export default async function Home({
     museum,
     coins,
     challenges,
-    ownedSkins,
+    collection,
+    packInfo,
   ] = await Promise.all([
     repo.getUserTeam(),
     repo.getStandings(),
@@ -48,7 +49,8 @@ export default async function Home({
     repo.getMuseumEntries(),
     repo.getUserCoins(),
     repo.getChallenges(),
-    repo.getOwnedSkins(),
+    repo.getCollection(),
+    repo.getPackInfo(),
   ]);
 
   // Modalità demo attiva quando manca la chiave API (contenuti da template locali).
@@ -72,7 +74,8 @@ export default async function Home({
       museum={museum}
       coins={coins}
       challenges={challenges}
-      ownedSkins={ownedSkins}
+      collection={collection}
+      freePackAvailable={packInfo.freePackAvailable}
       demoMode={demoMode}
       initialTab={initialTab}
     />

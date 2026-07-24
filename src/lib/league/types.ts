@@ -166,9 +166,14 @@ export interface ChallengeItem {
   completed: boolean;
 }
 
-export interface OwnedSkinItem {
-  skinKey: string;
-  count: number;
+// Carta giocatore nella collezione del presidente.
+export interface CardItem {
+  id: string;
+  playerId: string;
+  playerName: string;
+  rarity: string; // classica | speciale | iconica
+  createdAt: string;
+  inRoster: boolean; // il giocatore è attualmente nella propria rosa
 }
 
 export type FreeAgentStatus = "pending" | "accepted" | "rejected";
